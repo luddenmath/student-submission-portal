@@ -1,12 +1,105 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Student Submission Portal</title>
+  <title>Student Submission Portal - Sign In</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #101827;
+      color: white;
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    main {
+      background: #1e293b;
+      padding: 36px;
+      border-radius: 16px;
+      width: min(360px, calc(100% - 72px));
+      text-align: center;
+    }
+    button {
+      padding: 12px 20px;
+      border: 0;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    #status {
+      overflow-wrap: anywhere;
+      line-height: 1.6;
+    }
+  </style>
 </head>
 <body>
+<main>
   <h1>Student Submission Portal</h1>
-  <p>Coming soon.</p>
+  <p>Sign in with your Google account.</p>
+  <button id="signIn">Sign in with Google</button>
+  <p id="status">Not signed in.</p>
+  <button id="signOut" hidden>Sign out</button>
+</main>
+
+<script type="module">
+  import { initializeApp } from
+    "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+
+  import {
+    getAuth,
+    GoogleAuthProvider,
+    signInWithPopup,
+    signOut,
+    onAuthStateChanged
+  } from
+    "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBKtWvElYaOj3QrVqXq_okvk5lsZnbpLhg",
+    authDomain: "student-submission-porta-87f19.firebaseapp.com",
+    projectId: "student-submission-porta-87f19",
+    storageBucket: "student-submission-porta-87f19.firebasestorage.app",
+    messagingSenderId: "525364895472",
+    appId: "1:525364895472:web:4f7273f6e33f6404252c35"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
+
+  const status = document.getElementById("status");
+  const signInButton = document.getElementById("signIn");
+  const signOutButton = document.getElementById("signOut");
+
+  signInButton.addEventListener("click", async () => {
+    status.textContent = "Signing in...";
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      status.textContent = error.code + ": " + error.message;
+    }
+  });
+
+  signOutButton.addEventListener("click", async () => {
+    await signOut(auth);
+  });
+
+  onAuthStateChanged(auth, user => {
+    if (user) {
+      status.textContent =
+        "Signed in as: " + user.email +
+        "\n\nFirebase UID: " + user.uid;
+      signInButton.hidden = true;
+      signOutButton.hidden = false;
+    } else {
+      status.textContent = "Not signed in.";
+      signInButton.hidden = false;
+      signOutButton.hidden = true;
+    }
+  });
+</script>
 </body>
 </html>
