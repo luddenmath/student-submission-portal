@@ -231,7 +231,7 @@ small { color: var(--muted); }
 <body>
 
 <header>
-  <h1>Student Submission Portal v1.5</h1>
+  <h1>Student Submission Portal v1.6</h1>
   <button id="signOut" class="secondary hidden">Sign out</button>
 </header>
 
@@ -426,6 +426,8 @@ const provider = new GoogleAuthProvider();
 const $ = id => document.getElementById(id);
 
 let currentUser = null;
+  let activeClasses = [];
+let selectedClass = null;
 
 // ------------------------------
 // SIGN IN / SIGN OUT
@@ -788,6 +790,169 @@ $("classForm").addEventListener("submit", async event => {
   }
 });
 
+
+async function loadStudentClasses() {
+  const teacherSelect = $("studentTeacher");
+  const classSelect = $("studentClass");
+
+  teacherSelect.replaceChildren();
+  classSelect.replaceChildren();
+
+  classSelect.disabled = true;
+  $("continueToSubmit").disabled = true;
+  selectedClass = null;
+
+  const loading = document.createElement("option");
+  loading.value = "";
+  loading.textContent = "Loading classes...";
+  teacherSelect.appendChild(loading);
+
+  try {
+    // Students can only query active classes.
+    const classesQuery = query(
+      collection(db, "classes"),
+      where("active", "==", true)
+    );
+
+    const snapshot = await getDocs(classesQuery);
+
+    activeClasses = snapshot.docs.map(item => ({
+      id: item.id,
+      ...item.data()
+    }));
+
+    teacherSelect.replaceChildren();
+
+    if (activeClasses.length === 0) {
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = "No active classes available";
+      teacherSelect.appendChild(option);
+      return;
+    }
+
+    const teachers = [...new Set(
+      activeClasses.map(item => item.teacherEmail)
+    )].filter(Boolean).sort();
+
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "Choose a teacher...";
+    teacherSelect.appendChild(placeholder);
+
+    teachers.forEach(email => {
+      const option = document.createElement("option");
+      option.value = email;
+      option.textContent = email;
+      teacherSelect.appendChild(option);
+    });
+
+    $("studentClassMessage").textContent = "";
+
+  } catch (error) {
+    console.error("Unable to load student classes:", error);
+
+    teacherSelect.replaceChildren();
+
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "Unable to load teachers";
+    teacherSelect.appendChild(option);
+
+    $("studentClassMessage").textContent =
+      "Error loading classes: " + error.message;
+  }
+}
+
+function loadClassesForSelectedTeacher() {
+  const teacherEmail = $("studentTeacher").value;
+  const classSelect = $("studentClass");
+
+  classSelect.replaceChildren();
+
+  $("continueToSubmit").disabled = true;
+  selectedClass = null;
+
+  $("selectedClassInfo").textContent =
+    "Select a teacher and class to continue.";
+
+  if (!teacherEmail) {
+    classSelect.disabled = true;
+
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "Select a teacher first";
+    classSelect.appendChild(option);
+    return;
+  }
+
+  const classes = activeClasses
+    .filter(item => item.teacherEmail === teacherEmail)
+    .sort((a, b) => {
+      return (a.period || "").localeCompare(
+        b.period || "",
+        undefined,
+        { numeric: true }
+      );
+    });
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Choose a class...";
+  classSelect.appendChild(placeholder);
+
+  classes.forEach(item => {
+    const option = document.createElement("option");
+    option.value = item.id;
+    option.textContent = item.name + " — Period " + item.period;
+    classSelect.appendChild(option);
+  });
+
+  classSelect.disabled = false;
+}
+
+function selectStudentClass() {
+  const classId = $("studentClass").value;
+
+  selectedClass = activeClasses.find(
+    item => item.id === classId
+  ) || null;
+
+  $("continueToSubmit").disabled = !selectedClass;
+
+  if (selectedClass) {
+    $("selectedClassInfo").textContent =
+      selectedClass.name +
+      " — Period " + selectedClass.period +
+      " (" + selectedClass.teacherEmail + ")";
+  } else {
+    $("selectedClassInfo").textContent =
+      "Select a teacher and class to continue.";
+  }
+}
+
+$("studentTeacher").addEventListener(
+  "change",
+  loadClassesForSelectedTeacher
+);
+
+$("studentClass").addEventListener(
+  "change",
+  selectStudentClass
+);
+
+$("continueToSubmit").addEventListener("click", () => {
+  if (!selectedClass) return;
+
+  // Temporary confirmation until the submission form is built.
+  $("studentClassMessage").textContent =
+    "Selected " + selectedClass.name +
+    ", Period " + selectedClass.period + ".";
+
+  console.log("Selected class:", selectedClass);
+});
+
+  
 // ------------------------------
 // AUTH STATE
 // ------------------------------
@@ -826,9 +991,13 @@ onAuthStateChanged(auth, async user => {
     $("loginPanel").classList.add("hidden");
     $("status").textContent = "";
 
-    if (profile.role === "teacher") {
-      await loadClasses();
-    }
+if (profile.role === "teacher") {
+  await loadClasses();
+}
+
+if (profile.role === "student") {
+  await loadStudentClasses();
+}
 
   } catch (error) {
     console.error("Account authorization failed:", error);
