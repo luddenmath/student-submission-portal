@@ -15,6 +15,8 @@
   --muted: #9aa9bf;
   --accent: #8b7cff;
   --cyan: #42d6e8;
+  --green: #34d399;
+  --red: #f87171;
 }
 
 * { box-sizing: border-box; }
@@ -42,7 +44,7 @@ header h1 {
 
 main {
   width: min(900px, 92%);
-  margin: 70px auto;
+  margin: 50px auto;
 }
 
 .panel {
@@ -55,15 +57,18 @@ main {
 
 h2 { margin-top: 0; }
 
-p { color: var(--muted); line-height: 1.6; }
+p {
+  color: var(--muted);
+  line-height: 1.6;
+}
 
 button {
   background: var(--accent);
   color: white;
   border: 0;
   border-radius: 9px;
-  padding: 13px 20px;
-  font-size: 15px;
+  padding: 12px 18px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -72,7 +77,34 @@ button.secondary {
   background: #293650;
 }
 
+button.danger {
+  background: #7f303b;
+}
+
 button:hover { opacity: .85; }
+
+button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+input {
+  width: 100%;
+  background: #0b1020;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 12px;
+  color: var(--text);
+  font-size: 15px;
+  margin-top: 7px;
+}
+
+label {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 14px;
+}
 
 .hidden { display: none !important; }
 
@@ -95,12 +127,15 @@ button:hover { opacity: .85; }
   padding: 22px;
 }
 
-.access-error {
+.dashboard-card h3 { margin-top: 0; }
+
+.access-error,
+.manager-error {
   margin-top: 16px;
   padding: 16px;
   border: 1px solid #ef4444;
   border-radius: 12px;
-  background: rgba(239, 68, 68, 0.10);
+  background: rgba(239, 68, 68, .10);
   color: #fca5a5;
   line-height: 1.5;
 }
@@ -110,10 +145,86 @@ button:hover { opacity: .85; }
   margin-bottom: 5px;
   color: #f87171;
 }
-  
-.dashboard-card h3 { margin-top: 0; }
+
+.class-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.class-item {
+  background: #1c2941;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.class-item.inactive {
+  opacity: .65;
+}
+
+.class-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.class-item h3 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.class-status {
+  color: var(--green);
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.class-status.inactive {
+  color: var(--muted);
+}
+
+.class-fields {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 12px;
+}
+
+.class-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.class-actions button {
+  padding: 9px 13px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 14px;
+}
+
+.section-heading {
+  margin-top: 35px;
+}
+
+.empty-message {
+  color: var(--muted);
+  padding: 15px 0;
+}
 
 small { color: var(--muted); }
+
+@media (max-width: 550px) {
+  .panel { padding: 20px; }
+  .form-row, .class-fields { grid-template-columns: 1fr; }
+  .class-item-top { align-items: flex-start; }
+}
 </style>
 </head>
 
@@ -138,48 +249,108 @@ small { color: var(--muted); }
   </section>
 
   <section id="dashboard" class="hidden">
+
     <div class="panel">
       <h2 id="welcome"></h2>
       <p id="accountInfo"></p>
       <p id="roleInfo"></p>
     </div>
 
-    <div id="teacherDashboard" class="dashboard-grid hidden">
-      <div class="dashboard-card">
-        <h3>My Classes</h3>
-        <p>Manage your classes and periods.</p>
-      </div>
-      <div class="dashboard-card">
-        <h3>Submissions</h3>
-        <p>Review student assignment submissions.</p>
-      </div>
-      <div class="dashboard-card">
-        <h3>Assignments</h3>
-        <p>Manage assignment references.</p>
-      </div>
-    </div>
+    <!-- TEACHER DASHBOARD -->
+    <section id="teacherDashboard" class="hidden">
 
-    <div id="studentDashboard" class="dashboard-grid hidden">
-      <div class="dashboard-card">
-        <h3>Submit Work</h3>
-        <p>Report missing assignments or submit completed work.</p>
-      </div>
-      <div class="dashboard-card">
-        <h3>My Submissions</h3>
-        <p>View your submission history.</p>
-      </div>
-    </div>
+      <div class="panel">
+        <h2>My Classes</h2>
+        <p>Create and manage your classes and periods.</p>
 
-    <div id="adminDashboard" class="dashboard-grid hidden">
-      <div class="dashboard-card">
-        <h3>Administration</h3>
-        <p>Manage portal access and accounts.</p>
+        <form id="classForm">
+          <div class="form-row">
+            <label>
+              Class name
+              <input
+                id="className"
+                type="text"
+                placeholder="Example: Math 8"
+                maxlength="80"
+                required
+              >
+            </label>
+
+            <label>
+              Period
+              <input
+                id="classPeriod"
+                type="text"
+                placeholder="Example: 3"
+                maxlength="30"
+                required
+              >
+            </label>
+          </div>
+
+          <button id="createClassButton" type="submit">
+            Create Class
+          </button>
+        </form>
+
+        <div id="classMessage"></div>
       </div>
-      <div class="dashboard-card">
-        <h3>System Overview</h3>
-        <p>Schoolwide portal management.</p>
+
+      <div class="panel">
+        <h2>Your Classes</h2>
+        <p>Manage existing classes below.</p>
+
+        <div id="classList" class="class-list">
+          <p class="empty-message">Loading classes...</p>
+        </div>
       </div>
-    </div>
+
+      <div class="dashboard-grid">
+        <div class="dashboard-card">
+          <h3>Submissions</h3>
+          <p>Review student assignment submissions.</p>
+          <small>Coming next</small>
+        </div>
+
+        <div class="dashboard-card">
+          <h3>Assignments</h3>
+          <p>Manage assignment references.</p>
+          <small>Coming later</small>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- STUDENT DASHBOARD -->
+    <section id="studentDashboard" class="hidden">
+      <div class="dashboard-grid">
+        <div class="dashboard-card">
+          <h3>Submit Work</h3>
+          <p>Report missing assignments or submit completed work.</p>
+        </div>
+
+        <div class="dashboard-card">
+          <h3>My Submissions</h3>
+          <p>View your submission history.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ADMIN DASHBOARD -->
+    <section id="adminDashboard" class="hidden">
+      <div class="dashboard-grid">
+        <div class="dashboard-card">
+          <h3>Administration</h3>
+          <p>Manage portal access and accounts.</p>
+        </div>
+
+        <div class="dashboard-card">
+          <h3>System Overview</h3>
+          <p>Schoolwide portal management.</p>
+        </div>
+      </div>
+    </section>
+
   </section>
 
 </main>
@@ -202,6 +373,12 @@ import {
   doc,
   getDoc,
   setDoc,
+  addDoc,
+  updateDoc,
+  collection,
+  query,
+  where,
+  getDocs,
   serverTimestamp
 } from
   "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
@@ -223,8 +400,13 @@ const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
 const $ = id => document.getElementById(id);
-document.getElementById("accessError").hidden = true;
-  
+
+let currentUser = null;
+
+// ------------------------------
+// SIGN IN / SIGN OUT
+// ------------------------------
+
 $("signIn").addEventListener("click", async () => {
   $("accessError").hidden = true;
   $("status").textContent = "Signing in...";
@@ -238,6 +420,10 @@ $("signIn").addEventListener("click", async () => {
 });
 
 $("signOut").addEventListener("click", () => signOut(auth));
+
+// ------------------------------
+// DASHBOARDS
+// ------------------------------
 
 function hideDashboards() {
   $("teacherDashboard").classList.add("hidden");
@@ -259,6 +445,10 @@ function showDashboard(role) {
   }
 }
 
+// ------------------------------
+// USER REGISTRATION / AUTHORIZATION
+// ------------------------------
+
 async function registerOrLoadUser(user) {
   if (!user.email || !user.emailVerified) {
     throw new Error("A verified Google email is required.");
@@ -267,7 +457,6 @@ async function registerOrLoadUser(user) {
   const email = user.email.toLowerCase();
   const userRef = doc(db, "users", user.uid);
 
-  // Administrator is identified by Firebase UID.
   if (user.uid === ADMIN_UID) {
     const existing = await getDoc(userRef);
 
@@ -284,12 +473,10 @@ async function registerOrLoadUser(user) {
     role = "teacher";
   } else if (email.endsWith("@k12.leanderisd.org")) {
     role = "student";
-    //testing all gmail accounts students
-} else if (email.endsWith("@gmail.com")) {
-    role = "student";
-    
   } else {
-    throw new Error("This Google account is not authorized for the portal.");
+    throw new Error(
+      "This Google account is not authorized for the portal."
+    );
   }
 
   const existing = await getDoc(userRef);
@@ -298,7 +485,9 @@ async function registerOrLoadUser(user) {
     const data = existing.data();
 
     if (data.role !== role || data.status !== "active") {
-      throw new Error("Your account is not currently authorized.");
+      throw new Error(
+        "Your account is not currently authorized."
+      );
     }
 
     return data;
@@ -317,10 +506,272 @@ async function registerOrLoadUser(user) {
   return profile;
 }
 
+// ------------------------------
+// CLASS MANAGEMENT
+// ------------------------------
+
+async function loadClasses() {
+  if (!currentUser) return;
+
+  const list = $("classList");
+  list.replaceChildren();
+
+  const loading = document.createElement("p");
+  loading.className = "empty-message";
+  loading.textContent = "Loading classes...";
+  list.appendChild(loading);
+
+  try {
+    const classesQuery = query(
+      collection(db, "classes"),
+      where("teacherId", "==", currentUser.uid)
+    );
+
+    const snapshot = await getDocs(classesQuery);
+
+    list.replaceChildren();
+
+    if (snapshot.empty) {
+      const empty = document.createElement("p");
+      empty.className = "empty-message";
+      empty.textContent =
+        "You haven't created any classes yet.";
+      list.appendChild(empty);
+      return;
+    }
+
+    const classes = snapshot.docs.map(item => ({
+      id: item.id,
+      ...item.data()
+    }));
+
+    classes.sort((a, b) => {
+      return (a.name || "").localeCompare(b.name || "");
+    });
+
+    for (const classData of classes) {
+      renderClass(classData);
+    }
+
+  } catch (error) {
+    console.error("Unable to load classes:", error);
+
+    list.replaceChildren();
+
+    const message = document.createElement("p");
+    message.className = "empty-message";
+    message.textContent =
+      "Unable to load classes: " + error.message;
+
+    list.appendChild(message);
+  }
+}
+
+function renderClass(classData) {
+  const item = document.createElement("div");
+  item.className = "class-item";
+
+  if (!classData.active) {
+    item.classList.add("inactive");
+  }
+
+  const top = document.createElement("div");
+  top.className = "class-item-top";
+
+  const heading = document.createElement("h3");
+  heading.textContent =
+    classData.name + " — Period " + classData.period;
+
+  const status = document.createElement("span");
+  status.className =
+    "class-status" + (classData.active ? "" : " inactive");
+
+  status.textContent =
+    classData.active ? "ACTIVE" : "INACTIVE";
+
+  top.append(heading, status);
+
+  const fields = document.createElement("div");
+  fields.className = "class-fields";
+
+  const nameLabel = document.createElement("label");
+  nameLabel.textContent = "Class name";
+
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.maxLength = 80;
+  nameInput.value = classData.name || "";
+  nameInput.required = true;
+
+  nameLabel.appendChild(nameInput);
+
+  const periodLabel = document.createElement("label");
+  periodLabel.textContent = "Period";
+
+  const periodInput = document.createElement("input");
+  periodInput.type = "text";
+  periodInput.maxLength = 30;
+  periodInput.value = classData.period || "";
+  periodInput.required = true;
+
+  periodLabel.appendChild(periodInput);
+
+  fields.append(nameLabel, periodLabel);
+
+  const actions = document.createElement("div");
+  actions.className = "class-actions";
+
+  const saveButton = document.createElement("button");
+  saveButton.type = "button";
+  saveButton.textContent = "Save Changes";
+
+  saveButton.addEventListener("click", async () => {
+    const name = nameInput.value.trim();
+    const period = periodInput.value.trim();
+
+    if (!name || !period) {
+      showClassMessage(
+        "Please enter both a class name and period.",
+        true
+      );
+      return;
+    }
+
+    saveButton.disabled = true;
+    saveButton.textContent = "Saving...";
+
+    try {
+      await updateDoc(
+        doc(db, "classes", classData.id),
+        { name, period }
+      );
+
+      showClassMessage("Class updated successfully.");
+      await loadClasses();
+
+    } catch (error) {
+      console.error("Class update failed:", error);
+      showClassMessage(
+        "Unable to update class: " + error.message,
+        true
+      );
+      saveButton.disabled = false;
+      saveButton.textContent = "Save Changes";
+    }
+  });
+
+  const toggleButton = document.createElement("button");
+  toggleButton.type = "button";
+  toggleButton.className =
+    classData.active ? "danger" : "secondary";
+
+  toggleButton.textContent =
+    classData.active ? "Deactivate" : "Reactivate";
+
+  toggleButton.addEventListener("click", async () => {
+    toggleButton.disabled = true;
+
+    try {
+      await updateDoc(
+        doc(db, "classes", classData.id),
+        { active: !classData.active }
+      );
+
+      showClassMessage(
+        classData.active
+          ? "Class deactivated."
+          : "Class reactivated."
+      );
+
+      await loadClasses();
+
+    } catch (error) {
+      console.error("Class status update failed:", error);
+      showClassMessage(
+        "Unable to change class status: " + error.message,
+        true
+      );
+      toggleButton.disabled = false;
+    }
+  });
+
+  actions.append(saveButton, toggleButton);
+
+  item.append(top, fields, actions);
+
+  $("classList").appendChild(item);
+}
+
+function showClassMessage(message, isError = false) {
+  const container = $("classMessage");
+  container.replaceChildren();
+
+  const text = document.createElement("div");
+  text.className = isError ? "manager-error" : "";
+  text.textContent = message;
+
+  container.appendChild(text);
+}
+
+// ------------------------------
+// CREATE CLASS
+// ------------------------------
+
+$("classForm").addEventListener("submit", async event => {
+  event.preventDefault();
+
+  if (!currentUser) return;
+
+  const name = $("className").value.trim();
+  const period = $("classPeriod").value.trim();
+
+  if (!name || !period) return;
+
+  const button = $("createClassButton");
+  button.disabled = true;
+  button.textContent = "Creating...";
+
+  try {
+    await addDoc(collection(db, "classes"), {
+      teacherId: currentUser.uid,
+      teacherEmail: currentUser.email.toLowerCase(),
+      name,
+      period,
+      active: true,
+      createdAt: serverTimestamp()
+    });
+
+    $("classForm").reset();
+
+    showClassMessage("Class created successfully.");
+
+    await loadClasses();
+
+  } catch (error) {
+    console.error("Class creation failed:", error);
+
+    showClassMessage(
+      "Unable to create class: " + error.message,
+      true
+    );
+
+  } finally {
+    button.disabled = false;
+    button.textContent = "Create Class";
+  }
+});
+
+// ------------------------------
+// AUTH STATE
+// ------------------------------
+
 onAuthStateChanged(auth, async user => {
+  currentUser = user;
+
   $("dashboard").classList.add("hidden");
   $("loginPanel").classList.remove("hidden");
   $("signOut").classList.toggle("hidden", !user);
+
   hideDashboards();
 
   if (!user) {
@@ -335,10 +786,12 @@ onAuthStateChanged(auth, async user => {
     const profile = await registerOrLoadUser(user);
 
     $("welcome").textContent =
-      "Welcome, " + (profile.displayName || user.displayName || "User");
+      "Welcome, " +
+      (profile.displayName || user.displayName || "User");
 
     $("accountInfo").textContent = user.email;
-    $("roleInfo").textContent = "Account type: " + profile.role;
+    $("roleInfo").textContent =
+      "Account type: " + profile.role;
 
     showDashboard(profile.role);
 
@@ -346,10 +799,15 @@ onAuthStateChanged(auth, async user => {
     $("loginPanel").classList.add("hidden");
     $("status").textContent = "";
 
+    if (profile.role === "teacher") {
+      await loadClasses();
+    }
+
   } catch (error) {
     console.error("Account authorization failed:", error);
 
-    let message = error.message || "An unexpected error occurred.";
+    let message =
+      error.message || "An unexpected error occurred.";
 
     if (
       error.code === "permission-denied" ||
@@ -373,10 +831,10 @@ onAuthStateChanged(auth, async user => {
 
     $("status").textContent = "";
 
-    // Sign out without allowing the error message to disappear.
     await signOut(auth);
   }
 });
+
 </script>
 
 </body>
