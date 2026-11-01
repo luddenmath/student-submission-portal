@@ -1392,7 +1392,6 @@ async function loadStudentClasses() {
       return;
     }
 
-const recentTeacherEmails = getRecentTeacherEmails();
 
 const teachers = [...new Set(
   activeClasses.map(item => item.teacherEmail)
