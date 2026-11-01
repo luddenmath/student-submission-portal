@@ -423,6 +423,72 @@ textarea {
     flex-direction: column;
   }
 }
+
+/* Make the entire date field feel clickable */
+input[type="date"] {
+  cursor: pointer;
+  min-height: 43px;
+  color-scheme: dark;
+}
+
+/* Submission status colors */
+.status-badge {
+  display: inline-block;
+  padding: 6px 11px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: bold;
+  margin: 8px 0;
+  border: 1px solid transparent;
+}
+
+.status-new {
+  color: #93c5fd;
+  background: rgba(59, 130, 246, .16);
+  border-color: rgba(59, 130, 246, .35);
+}
+
+.status-reviewed {
+  color: #c4b5fd;
+  background: rgba(139, 92, 246, .16);
+  border-color: rgba(139, 92, 246, .35);
+}
+
+.status-resolved {
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, .16);
+  border-color: rgba(16, 185, 129, .35);
+}
+
+.status-needs_correction {
+  color: #fdba74;
+  background: rgba(249, 115, 22, .16);
+  border-color: rgba(249, 115, 22, .35);
+}
+
+.submission-status-row select {
+  margin-top: 7px;
+}
+
+.submission-status-row select:disabled {
+  opacity: .65;
+}
+
+/* Student history filters */
+.student-history-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 20px 0;
+}
+
+@media (max-width: 550px) {
+  .student-history-filters {
+    grid-template-columns: 1fr;
+  }
+}
+
+  
 </style>
 </head>
 
@@ -646,6 +712,47 @@ textarea {
   </div>
 
   <div id="studentHistoryMessage" class="inbox-message"></div>
+      <div class="student-history-filters">
+
+    <label>
+      Submission type
+      <select id="studentHistoryType">
+        <option value="all">All submissions</option>
+        <option value="missing">Missing assignments</option>
+        <option value="completed">Completed work</option>
+      </select>
+    </label>
+
+    <label>
+      Status
+      <select id="studentHistoryStatus">
+        <option value="all">All statuses</option>
+        <option value="new">New</option>
+        <option value="reviewed">Reviewed</option>
+        <option value="resolved">Resolved</option>
+        <option value="needs_correction">Needs correction</option>
+      </select>
+    </label>
+
+    <label>
+      Submitted on or after
+      <input type="date" id="studentHistoryDateFrom">
+    </label>
+
+    <label>
+      Submitted on or before
+      <input type="date" id="studentHistoryDateTo">
+    </label>
+
+    <label>
+      Sort by submission date
+      <select id="studentHistorySort">
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+      </select>
+    </label>
+
+  </div>
   <div id="studentHistory" class="submission-inbox">
     <p class="empty-message">Loading your submissions...</p>
   </div>
@@ -837,6 +944,30 @@ function rememberRecentClass(classId) {
 
   localStorage.setItem(
     "recentClasses_" + currentUser.uid,
+    JSON.stringify(recent.slice(0, 10))
+  );
+}
+
+  function getRecentTeacherEmails() {
+  try {
+    return JSON.parse(
+      localStorage.getItem("recentTeachers_" + currentUser.uid) || "[]"
+    );
+  } catch {
+    return [];
+  }
+}
+
+function rememberRecentTeacher(email) {
+  if (!currentUser || !email) return;
+
+  const recent = getRecentTeacherEmails()
+    .filter(item => item !== email);
+
+  recent.unshift(email);
+
+  localStorage.setItem(
+    "recentTeachers_" + currentUser.uid,
     JSON.stringify(recent.slice(0, 10))
   );
 }
@@ -1247,15 +1378,7 @@ async function loadStudentClasses() {
       return;
     }
 
-const recentIds = getRecentClassIds();
-
-const recentClasses = recentIds
-  .map(id => activeClasses.find(item => item.id === id))
-  .filter(Boolean);
-
-const recentTeacherEmails = [
-  ...new Set(recentClasses.map(item => item.teacherEmail))
-];
+const recentTeacherEmails = getRecentTeacherEmails();
 
 const teachers = [...new Set(
   activeClasses.map(item => item.teacherEmail)
@@ -1370,6 +1493,8 @@ function selectStudentClass() {
   $("continueToSubmit").disabled = !selectedClass;
 
   if (selectedClass) {
+        rememberRecentClass(selectedClass.id);
+    rememberRecentTeacher(selectedClass.teacherEmail);
     $("selectedClassInfo").textContent =
       selectedClass.name +
       " — Period " + selectedClass.period +
@@ -1380,10 +1505,10 @@ function selectStudentClass() {
   }
 }
 
-$("studentTeacher").addEventListener(
-  "change",
-  loadClassesForSelectedTeacher
-);
+$("studentTeacher").addEventListener("change", () => {
+  rememberRecentTeacher($("studentTeacher").value);
+  loadClassesForSelectedTeacher();
+});
 
 $("studentClass").addEventListener(
   "change",
@@ -1421,21 +1546,56 @@ function renderStudentHistory() {
   const container = $("studentHistory");
   container.replaceChildren();
 
-  if (studentSubmissions.length === 0) {
+  const typeFilter = $("studentHistoryType").value;
+  const statusFilter = $("studentHistoryStatus").value;
+  const dateFrom = $("studentHistoryDateFrom").value;
+  const dateTo = $("studentHistoryDateTo").value;
+  const sortOrder = $("studentHistorySort").value;
+
+  let filtered = studentSubmissions.filter(submission => {
+    const matchesType =
+      typeFilter === "all" || submission.type === typeFilter;
+
+    const matchesStatus =
+      statusFilter === "all" || submission.status === statusFilter;
+
+    const timestamp = submission.submittedAt?.toDate?.();
+
+    const date = timestamp
+      ? [
+          timestamp.getFullYear(),
+          String(timestamp.getMonth() + 1).padStart(2, "0"),
+          String(timestamp.getDate()).padStart(2, "0")
+        ].join("-")
+      : "";
+
+    const matchesFrom = !dateFrom || (date && date >= dateFrom);
+    const matchesTo = !dateTo || (date && date <= dateTo);
+
+    return matchesType && matchesStatus && matchesFrom && matchesTo;
+  });
+
+  filtered.sort((a, b) => {
+    const dateA = a.submittedAt?.toMillis?.() || 0;
+    const dateB = b.submittedAt?.toMillis?.() || 0;
+
+    return sortOrder === "oldest"
+      ? dateA - dateB
+      : dateB - dateA;
+  });
+
+  if (filtered.length === 0) {
     const empty = document.createElement("p");
     empty.className = "empty-message";
-    empty.textContent = "You haven't submitted any assignments yet.";
+    empty.textContent = studentSubmissions.length === 0
+      ? "You haven't submitted any assignments yet."
+      : "No submissions match these filters.";
+
     container.appendChild(empty);
     return;
   }
 
-  studentSubmissions.sort((a, b) => {
-    const dateA = a.submittedAt?.toMillis?.() || 0;
-    const dateB = b.submittedAt?.toMillis?.() || 0;
-    return dateB - dateA;
-  });
-
-  for (const submission of studentSubmissions) {
+  for (const submission of filtered) {
     const card = document.createElement("div");
     card.className = "submission-card";
 
@@ -1446,7 +1606,8 @@ function renderStudentHistory() {
       : "COMPLETED WORK";
 
     const heading = document.createElement("h3");
-    heading.textContent = submission.assignmentName || "Untitled assignment";
+    heading.textContent =
+      submission.assignmentName || "Untitled assignment";
 
     const classInfo = document.createElement("p");
     classInfo.textContent =
@@ -1458,19 +1619,19 @@ function renderStudentHistory() {
     submitted.textContent =
       "Submitted: " + formatSubmissionDate(submission.submittedAt);
 
-    const status = document.createElement("p");
-    status.className = "inbox-message";
-    status.textContent =
-      "Teacher status: " +
-      (submissionStatuses.find(
-        item => item.value === submission.status
-      )?.label || submission.status || "New");
+    const status = createStatusBadge(submission.status);
 
-    card.append(type, heading, classInfo, submitted, status);
+    const statusLabel = document.createElement("p");
+    statusLabel.textContent = "Teacher status:";
+    statusLabel.appendChild(document.createTextNode(" "));
+    statusLabel.appendChild(status);
+
+    card.append(type, heading, classInfo, submitted, statusLabel);
 
     if (submission.assignedDate) {
       const assigned = document.createElement("p");
-      assigned.textContent = "Date assigned: " + submission.assignedDate;
+      assigned.textContent =
+        "Date assigned: " + submission.assignedDate;
       card.appendChild(assigned);
     }
 
@@ -1544,6 +1705,16 @@ $("refreshStudentHistory").addEventListener(
   "click",
   loadStudentHistory
 );
+
+  [
+  "studentHistoryType",
+  "studentHistoryStatus",
+  "studentHistoryDateFrom",
+  "studentHistoryDateTo",
+  "studentHistorySort"
+].forEach(id => {
+  $(id).addEventListener("change", renderStudentHistory);
+});
 
 function showSubmissionMessage(message, isError = false) {
   const container = $("submissionMessage");
@@ -1775,6 +1946,23 @@ const submissionStatuses = [
   { value: "resolved", label: "Resolved" },
   { value: "needs_correction", label: "Needs correction" }
 ];
+
+  function createStatusBadge(status) {
+  const badge = document.createElement("span");
+
+  const validStatus = submissionStatuses.some(
+    item => item.value === status
+  ) ? status : "new";
+
+  const label = submissionStatuses.find(
+    item => item.value === validStatus
+  ).label;
+
+  badge.className = "status-badge status-" + validStatus;
+  badge.textContent = label;
+
+  return badge;
+}
 
 function showInboxMessage(message, isError = false) {
   const container = $("submissionInboxMessage");
@@ -2041,79 +2229,75 @@ function renderSubmissionCard(submission) {
     card.appendChild(noLinks);
   }
 
-  // Status controls
-  const statusRow = document.createElement("div");
-  statusRow.className = "submission-status-row";
+ // Status controls — automatically save on change
+const statusRow = document.createElement("div");
+statusRow.className = "submission-status-row";
 
-  const statusLabel = document.createElement("label");
-  statusLabel.textContent = "Submission status";
+const statusLabel = document.createElement("label");
+statusLabel.textContent = "Submission status";
 
-  const statusSelect = document.createElement("select");
+const statusSelect = document.createElement("select");
 
-  submissionStatuses.forEach(status => {
-    const option = document.createElement("option");
-    option.value = status.value;
-    option.textContent = status.label;
-    statusSelect.appendChild(option);
-  });
+submissionStatuses.forEach(status => {
+  const option = document.createElement("option");
+  option.value = status.value;
+  option.textContent = status.label;
+  statusSelect.appendChild(option);
+});
 
-  statusSelect.value = submissionStatuses.some(
-    item => item.value === submission.status
-  ) ? submission.status : "new";
+statusSelect.value = submissionStatuses.some(
+  item => item.value === submission.status
+) ? submission.status : "new";
 
-  statusLabel.appendChild(statusSelect);
+statusLabel.appendChild(statusSelect);
+statusRow.appendChild(statusLabel);
+card.appendChild(statusRow);
 
-  const saveButton = document.createElement("button");
-  saveButton.type = "button";
-  saveButton.textContent = "Save Status";
+const statusDisplay = document.createElement("p");
+statusDisplay.className = "inbox-message";
 
-  saveButton.addEventListener("click", async () => {
-    const newStatus = statusSelect.value;
+const statusBadge = createStatusBadge(submission.status);
 
-    if (newStatus === submission.status) {
-      showInboxMessage("No status change to save.");
-      return;
-    }
+statusDisplay.append("Current status: ", statusBadge);
+card.appendChild(statusDisplay);
 
-    saveButton.disabled = true;
-    saveButton.textContent = "Saving...";
+statusSelect.addEventListener("change", async () => {
+  const previousStatus = submission.status;
+  const newStatus = statusSelect.value;
 
-    try {
-      await updateDoc(
-        doc(db, "submissions", submission.id),
-        { status: newStatus }
-      );
+  if (newStatus === previousStatus) return;
 
-      submission.status = newStatus;
+  statusSelect.disabled = true;
+  statusDisplay.textContent = "Saving status...";
 
-      showInboxMessage("Submission status updated.");
-      renderTeacherSubmissions();
+  try {
+    await updateDoc(
+      doc(db, "submissions", submission.id),
+      { status: newStatus }
+    );
 
-    } catch (error) {
-      console.error("Unable to update submission:", error);
+    submission.status = newStatus;
 
-      showInboxMessage(
-        "Unable to update status: " + error.message,
-        true
-      );
+    showInboxMessage("Submission status saved.");
+    renderTeacherSubmissions();
 
-      saveButton.disabled = false;
-      saveButton.textContent = "Save Status";
-    }
-  });
+  } catch (error) {
+    console.error("Unable to update submission:", error);
 
-  statusRow.append(statusLabel, saveButton);
-  card.appendChild(statusRow);
+    statusSelect.value = previousStatus;
+    statusSelect.disabled = false;
 
-  const statusText = document.createElement("p");
-  statusText.className = "inbox-message";
-  statusText.textContent =
-    "Current status: " +
-    (submissionStatuses.find(
-      item => item.value === submission.status
-    )?.label || submission.status);
+    statusDisplay.replaceChildren(
+      document.createTextNode("Current status: "),
+      createStatusBadge(previousStatus)
+    );
 
-  card.appendChild(statusText);
+    showInboxMessage(
+      "Unable to save status: " + error.message,
+      true
+    );
+  }
+});
 
   $("submissionInbox").appendChild(card);
 }
@@ -2167,6 +2351,21 @@ $("backToTeacherDashboard").addEventListener("click", () => {
   $("classManagementView").classList.add("hidden");
   $("teacherMainView").classList.remove("hidden");
   window.scrollTo({ top: 0, behavior: "smooth" });
+});
+
+// Open the date picker when clicking anywhere in a date field.
+document.addEventListener("click", event => {
+  const dateInput = event.target.closest('input[type="date"]');
+
+  if (!dateInput) return;
+
+  if (typeof dateInput.showPicker === "function") {
+    try {
+      dateInput.showPicker();
+    } catch {
+      dateInput.focus();
+    }
+  }
 });
   
 // ------------------------------
