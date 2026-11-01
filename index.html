@@ -2,104 +2,332 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Student Submission Portal - Sign In</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #101827;
-      color: white;
-      display: grid;
-      place-items: center;
-      min-height: 100vh;
-      margin: 0;
-    }
-    main {
-      background: #1e293b;
-      padding: 36px;
-      border-radius: 16px;
-      width: min(360px, calc(100% - 72px));
-      text-align: center;
-    }
-    button {
-      padding: 12px 20px;
-      border: 0;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 16px;
-    }
-    #status {
-      overflow-wrap: anywhere;
-      line-height: 1.6;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Student Submission Portal</title>
+
+<style>
+:root {
+  --bg: #0b1020;
+  --panel: #151e32;
+  --border: #293650;
+  --text: #f1f5f9;
+  --muted: #9aa9bf;
+  --accent: #8b7cff;
+  --cyan: #42d6e8;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Arial, sans-serif;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 6%;
+  border-bottom: 1px solid var(--border);
+}
+
+header h1 {
+  font-size: 19px;
+  margin: 0;
+}
+
+main {
+  width: min(900px, 92%);
+  margin: 70px auto;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 30px;
+  margin-bottom: 20px;
+}
+
+h2 { margin-top: 0; }
+
+p { color: var(--muted); line-height: 1.6; }
+
+button {
+  background: var(--accent);
+  color: white;
+  border: 0;
+  border-radius: 9px;
+  padding: 13px 20px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: #293650;
+}
+
+button:hover { opacity: .85; }
+
+.hidden { display: none !important; }
+
+#status {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  margin-top: 18px;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 15px;
+}
+
+.dashboard-card {
+  background: #1c2941;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px;
+}
+
+.dashboard-card h3 { margin-top: 0; }
+
+small { color: var(--muted); }
+</style>
 </head>
+
 <body>
-<main>
+
+<header>
   <h1>Student Submission Portal</h1>
-  <p>Sign in with your Google account.</p>
-  <button id="signIn">Sign in with Google</button>
-  <p id="status">Not signed in.</p>
-  <button id="signOut" hidden>Sign out</button>
+  <button id="signOut" class="secondary hidden">Sign out</button>
+</header>
+
+<main>
+
+  <section id="loginPanel" class="panel">
+    <h2>Welcome</h2>
+    <p>
+      Sign in using your district Google account
+      to access the submission portal.
+    </p>
+    <button id="signIn">Sign in with Google</button>
+    <div id="status"></div>
+  </section>
+
+  <section id="dashboard" class="hidden">
+    <div class="panel">
+      <h2 id="welcome"></h2>
+      <p id="accountInfo"></p>
+      <p id="roleInfo"></p>
+    </div>
+
+    <div id="teacherDashboard" class="dashboard-grid hidden">
+      <div class="dashboard-card">
+        <h3>My Classes</h3>
+        <p>Manage your classes and periods.</p>
+      </div>
+      <div class="dashboard-card">
+        <h3>Submissions</h3>
+        <p>Review student assignment submissions.</p>
+      </div>
+      <div class="dashboard-card">
+        <h3>Assignments</h3>
+        <p>Manage assignment references.</p>
+      </div>
+    </div>
+
+    <div id="studentDashboard" class="dashboard-grid hidden">
+      <div class="dashboard-card">
+        <h3>Submit Work</h3>
+        <p>Report missing assignments or submit completed work.</p>
+      </div>
+      <div class="dashboard-card">
+        <h3>My Submissions</h3>
+        <p>View your submission history.</p>
+      </div>
+    </div>
+
+    <div id="adminDashboard" class="dashboard-grid hidden">
+      <div class="dashboard-card">
+        <h3>Administration</h3>
+        <p>Manage portal access and accounts.</p>
+      </div>
+      <div class="dashboard-card">
+        <h3>System Overview</h3>
+        <p>Schoolwide portal management.</p>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 <script type="module">
-  import { initializeApp } from
-    "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+import { initializeApp } from
+  "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
 
-  import {
-    getAuth,
-    GoogleAuthProvider,
-    signInWithPopup,
-    signOut,
-    onAuthStateChanged
-  } from
-    "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged
+} from
+  "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyBKtWvElYaOj3QrVqXq_okvk5lsZnbpLhg",
-    authDomain: "student-submission-porta-87f19.firebaseapp.com",
-    projectId: "student-submission-porta-87f19",
-    storageBucket: "student-submission-porta-87f19.firebasestorage.app",
-    messagingSenderId: "525364895472",
-    appId: "1:525364895472:web:4f7273f6e33f6404252c35"
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  serverTimestamp
+} from
+  "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBKtWvElYaOj3QrVqXq_okvk5lsZnbpLhg",
+  authDomain: "student-submission-porta-87f19.firebaseapp.com",
+  projectId: "student-submission-porta-87f19",
+  storageBucket: "student-submission-porta-87f19.firebasestorage.app",
+  messagingSenderId: "525364895472",
+  appId: "1:525364895472:web:4f7273f6e33f6404252c35"
+};
+
+const ADMIN_UID = "gsxU7DtVn2SvvpypTPkE3TLYwiE2";
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
+
+const $ = id => document.getElementById(id);
+
+$("signIn").addEventListener("click", async () => {
+  $("status").textContent = "Signing in...";
+
+  try {
+    await signInWithPopup(auth, provider);
+  } catch (error) {
+    $("status").textContent =
+      error.code + ": " + error.message;
+  }
+});
+
+$("signOut").addEventListener("click", () => signOut(auth));
+
+function hideDashboards() {
+  $("teacherDashboard").classList.add("hidden");
+  $("studentDashboard").classList.add("hidden");
+  $("adminDashboard").classList.add("hidden");
+}
+
+function showDashboard(role) {
+  hideDashboards();
+
+  const dashboard = {
+    admin: "adminDashboard",
+    teacher: "teacherDashboard",
+    student: "studentDashboard"
   };
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const provider = new GoogleAuthProvider();
+  if (dashboard[role]) {
+    $(dashboard[role]).classList.remove("hidden");
+  }
+}
 
-  const status = document.getElementById("status");
-  const signInButton = document.getElementById("signIn");
-  const signOutButton = document.getElementById("signOut");
+async function registerOrLoadUser(user) {
+  if (!user.email || !user.emailVerified) {
+    throw new Error("A verified Google email is required.");
+  }
 
-  signInButton.addEventListener("click", async () => {
-    status.textContent = "Signing in...";
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      status.textContent = error.code + ": " + error.message;
+  const email = user.email.toLowerCase();
+  const userRef = doc(db, "users", user.uid);
+
+  // Administrator is identified by Firebase UID.
+  if (user.uid === ADMIN_UID) {
+    const existing = await getDoc(userRef);
+
+    if (!existing.exists()) {
+      throw new Error("Administrator profile is missing.");
     }
-  });
 
-  signOutButton.addEventListener("click", async () => {
+    return existing.data();
+  }
+
+  let role;
+
+  if (email.endsWith("@leanderisd.org")) {
+    role = "teacher";
+  } else if (email.endsWith("@k12.leanderisd.org")) {
+    role = "student";
+  } else {
+    throw new Error("This Google account is not authorized for the portal.");
+  }
+
+  const existing = await getDoc(userRef);
+
+  if (existing.exists()) {
+    const data = existing.data();
+
+    if (data.role !== role || data.status !== "active") {
+      throw new Error("Your account is not currently authorized.");
+    }
+
+    return data;
+  }
+
+  const profile = {
+    email,
+    role,
+    status: "active",
+    displayName: user.displayName || "",
+    createdAt: serverTimestamp()
+  };
+
+  await setDoc(userRef, profile);
+
+  return profile;
+}
+
+onAuthStateChanged(auth, async user => {
+  $("loginPanel").classList.toggle("hidden", !!user);
+  $("dashboard").classList.add("hidden");
+  $("signOut").classList.toggle("hidden", !user);
+  hideDashboards();
+
+  if (!user) {
+    $("status").textContent = "";
+    return;
+  }
+
+  $("status").textContent = "Loading account...";
+
+  try {
+    const profile = await registerOrLoadUser(user);
+
+    $("welcome").textContent =
+      "Welcome, " + (profile.displayName || user.displayName || "User");
+
+    $("accountInfo").textContent = user.email;
+    $("roleInfo").textContent =
+      "Account type: " + profile.role;
+
+    showDashboard(profile.role);
+
+    $("dashboard").classList.remove("hidden");
+    $("status").textContent = "";
+
+  } catch (error) {
+    $("status").textContent = error.message;
     await signOut(auth);
-  });
-
-  onAuthStateChanged(auth, user => {
-    if (user) {
-      status.textContent =
-        "Signed in as: " + user.email +
-        "\n\nFirebase UID: " + user.uid;
-      signInButton.hidden = true;
-      signOutButton.hidden = false;
-    } else {
-      status.textContent = "Not signed in.";
-      signInButton.hidden = false;
-      signOutButton.hidden = true;
-    }
-  });
+  }
+});
 </script>
+
 </body>
 </html>
