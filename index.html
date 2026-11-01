@@ -231,7 +231,7 @@ small { color: var(--muted); }
 <body>
 
 <header>
-  <h1>Student Submission Portal v1.4</h1>
+  <h1>Student Submission Portal v1.5</h1>
   <button id="signOut" class="secondary hidden">Sign out</button>
 </header>
 
@@ -322,19 +322,43 @@ small { color: var(--muted); }
     </section>
 
     <!-- STUDENT DASHBOARD -->
-    <section id="studentDashboard" class="hidden">
-      <div class="dashboard-grid">
-        <div class="dashboard-card">
-          <h3>Submit Work</h3>
-          <p>Report missing assignments or submit completed work.</p>
-        </div>
+    
+<section id="studentDashboard" class="hidden">
 
-        <div class="dashboard-card">
-          <h3>My Submissions</h3>
-          <p>View your submission history.</p>
-        </div>
-      </div>
-    </section>
+  <div class="panel">
+    <h2>Select Your Teacher</h2>
+    <p>Choose your teacher to see their available classes.</p>
+
+    <label>
+      Teacher
+      <select id="studentTeacher">
+        <option value="">Loading teachers...</option>
+      </select>
+    </label>
+
+    <label>
+      Class / Period
+      <select id="studentClass" disabled>
+        <option value="">Select a teacher first</option>
+      </select>
+    </label>
+
+    <div id="studentClassMessage"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Next Steps</h2>
+    <p id="selectedClassInfo">
+      Select a teacher and class to continue.
+    </p>
+    <button id="continueToSubmit" disabled>
+      Continue
+    </button>
+    <p><small>Assignment reporting and work submission are coming next.</small></p>
+  </div>
+
+</section>
+
 
     <!-- ADMIN DASHBOARD -->
     <section id="adminDashboard" class="hidden">
