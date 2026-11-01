@@ -1506,24 +1506,13 @@ function loadClassesForSelectedTeacher() {
 
   const classes = activeClasses
     .filter(item => item.teacherEmail === teacherEmail)
-    .sort((a, b) => {
-  const recent = getRecentClassIds();
-  const aIndex = recent.indexOf(a.id);
-  const bIndex = recent.indexOf(b.id);
-
-  if (aIndex === -1 && bIndex === -1) {
-    return (a.period || "").localeCompare(
-      b.period || "",
-      undefined,
-      { numeric: true }
+    .sort((a, b) =>
+      (a.period || "").localeCompare(
+        b.period || "",
+        undefined,
+        { numeric: true }
+      )
     );
-  }
-
-  if (aIndex === -1) return 1;
-  if (bIndex === -1) return -1;
-
-  return aIndex - bIndex;
-});
 
   const placeholder = document.createElement("option");
   placeholder.value = "";
