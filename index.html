@@ -815,6 +815,26 @@ let currentUser = null;
   let activeClasses = [];
 let selectedClass = null;
 
+  function getRecentClassIds() {
+  try {
+    return JSON.parse(
+      localStorage.getItem("recentClasses_" + currentUser.uid) || "[]"
+    );
+  } catch {
+    return [];
+  }
+}
+
+function rememberRecentClass(classId) {
+  const recent = getRecentClassIds().filter(id => id !== classId);
+  recent.unshift(classId);
+
+  localStorage.setItem(
+    "recentClasses_" + currentUser.uid,
+    JSON.stringify(recent.slice(0, 10))
+  );
+}
+
 // ------------------------------
 // SIGN IN / SIGN OUT
 // ------------------------------
@@ -1218,9 +1238,31 @@ async function loadStudentClasses() {
       return;
     }
 
-    const teachers = [...new Set(
-      activeClasses.map(item => item.teacherEmail)
-    )].filter(Boolean).sort();
+const recentIds = getRecentClassIds();
+
+const recentClasses = recentIds
+  .map(id => activeClasses.find(item => item.id === id))
+  .filter(Boolean);
+
+const recentTeacherEmails = [
+  ...new Set(recentClasses.map(item => item.teacherEmail))
+];
+
+const teachers = [...new Set(
+  activeClasses.map(item => item.teacherEmail)
+)].filter(Boolean).sort((a, b) => {
+  const aIndex = recentTeacherEmails.indexOf(a);
+  const bIndex = recentTeacherEmails.indexOf(b);
+
+  if (aIndex === -1 && bIndex === -1) {
+    return a.localeCompare(b);
+  }
+
+  if (aIndex === -1) return 1;
+  if (bIndex === -1) return -1;
+
+  return aIndex - bIndex;
+});
 
     const placeholder = document.createElement("option");
     placeholder.value = "";
@@ -1276,12 +1318,23 @@ function loadClassesForSelectedTeacher() {
   const classes = activeClasses
     .filter(item => item.teacherEmail === teacherEmail)
     .sort((a, b) => {
-      return (a.period || "").localeCompare(
-        b.period || "",
-        undefined,
-        { numeric: true }
-      );
-    });
+  const recent = getRecentClassIds();
+  const aIndex = recent.indexOf(a.id);
+  const bIndex = recent.indexOf(b.id);
+
+  if (aIndex === -1 && bIndex === -1) {
+    return (a.period || "").localeCompare(
+      b.period || "",
+      undefined,
+      { numeric: true }
+    );
+  }
+
+  if (aIndex === -1) return 1;
+  if (bIndex === -1) return -1;
+
+  return aIndex - bIndex;
+});
 
   const placeholder = document.createElement("option");
   placeholder.value = "";
