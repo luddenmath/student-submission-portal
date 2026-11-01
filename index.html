@@ -307,6 +307,122 @@ textarea {
     flex-basis: 100%;
   }
 }  
+
+  .inbox-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 15px;
+}
+
+.inbox-heading h2 {
+  margin-bottom: 5px;
+}
+
+.inbox-heading p {
+  margin-top: 0;
+}
+
+.inbox-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 20px 0;
+}
+
+.submission-inbox {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.submission-card {
+  background: #1c2941;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  min-width: 0;
+}
+
+.submission-card h3 {
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+}
+
+.submission-card p {
+  margin: 7px 0;
+  overflow-wrap: anywhere;
+}
+
+.submission-meta {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+
+.submission-type {
+  display: inline-block;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: #293650;
+  color: var(--cyan);
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.submission-links {
+  margin: 12px 0;
+  padding-left: 20px;
+}
+
+.submission-links li {
+  margin: 7px 0;
+  overflow-wrap: anywhere;
+}
+
+.submission-links a {
+  color: var(--cyan);
+}
+
+.submission-status-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 15px;
+  border-top: 1px solid var(--border);
+}
+
+.submission-status-row label {
+  flex: 1;
+  margin: 0;
+}
+
+.submission-status-row button {
+  flex-shrink: 0;
+}
+
+.inbox-message {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 10px;
+}
+
+@media (max-width: 550px) {
+  .inbox-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .submission-status-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .inbox-heading {
+    flex-direction: column;
+  }
+}
 </style>
 </head>
 
@@ -384,6 +500,52 @@ textarea {
 
         <div id="classList" class="class-list">
           <p class="empty-message">Loading classes...</p>
+        </div>
+      </div>
+
+            <!-- TEACHER SUBMISSION INBOX -->
+      <div class="panel">
+        <div class="inbox-heading">
+          <div>
+            <h2>Student Submissions</h2>
+            <p>Review missing assignments and completed work.</p>
+          </div>
+
+          <button
+            type="button"
+            id="refreshSubmissions"
+            class="secondary"
+          >
+            Refresh
+          </button>
+        </div>
+
+        <div class="inbox-filters">
+          <label>
+            Submission type
+            <select id="submissionTypeFilter">
+              <option value="all">All submissions</option>
+              <option value="missing">Missing assignments</option>
+              <option value="completed">Completed work</option>
+            </select>
+          </label>
+
+          <label>
+            Status
+            <select id="submissionStatusFilter">
+              <option value="all">All statuses</option>
+              <option value="new">New</option>
+              <option value="reviewed">Reviewed</option>
+              <option value="resolved">Resolved</option>
+              <option value="needs_correction">Needs correction</option>
+            </select>
+          </label>
+        </div>
+
+        <div id="submissionInboxMessage"></div>
+
+        <div id="submissionInbox" class="submission-inbox">
+          <p class="empty-message">Loading submissions...</p>
         </div>
       </div>
 
@@ -1354,7 +1516,312 @@ $("chooseDriveFiles").addEventListener("click", () => {
     true
   );
 });
-  
+
+
+  // ------------------------------
+// TEACHER SUBMISSION INBOX
+// ------------------------------
+
+let teacherSubmissions = [];
+
+const submissionStatuses = [
+  { value: "new", label: "New" },
+  { value: "reviewed", label: "Reviewed" },
+  { value: "resolved", label: "Resolved" },
+  { value: "needs_correction", label: "Needs correction" }
+];
+
+function showInboxMessage(message, isError = false) {
+  const container = $("submissionInboxMessage");
+  container.replaceChildren();
+
+  const element = document.createElement("p");
+  element.className = isError ? "submission-error" : "inbox-message";
+  element.textContent = message;
+
+  container.appendChild(element);
+}
+
+function formatSubmissionDate(timestamp) {
+  if (!timestamp || typeof timestamp.toDate !== "function") {
+    return "Date unavailable";
+  }
+
+  return timestamp.toDate().toLocaleString();
+}
+
+async function loadTeacherSubmissions() {
+  if (!currentUser) return;
+
+  const inbox = $("submissionInbox");
+
+  inbox.replaceChildren();
+
+  const loading = document.createElement("p");
+  loading.className = "empty-message";
+  loading.textContent = "Loading submissions...";
+  inbox.appendChild(loading);
+
+  try {
+    const submissionsQuery = query(
+      collection(db, "submissions"),
+      where("teacherId", "==", currentUser.uid)
+    );
+
+    const snapshot = await getDocs(submissionsQuery);
+
+    teacherSubmissions = snapshot.docs.map(item => ({
+      id: item.id,
+      ...item.data()
+    }));
+
+    teacherSubmissions.sort((a, b) => {
+      const dateA = a.submittedAt?.toMillis?.() || 0;
+      const dateB = b.submittedAt?.toMillis?.() || 0;
+      return dateB - dateA;
+    });
+
+    renderTeacherSubmissions();
+
+    showInboxMessage(
+      teacherSubmissions.length +
+      (teacherSubmissions.length === 1
+        ? " submission found."
+        : " submissions found.")
+    );
+
+  } catch (error) {
+    console.error("Unable to load submissions:", error);
+
+    inbox.replaceChildren();
+
+    const message = document.createElement("p");
+    message.className = "empty-message";
+    message.textContent =
+      "Unable to load submissions: " + error.message;
+
+    inbox.appendChild(message);
+  }
+}
+
+function renderTeacherSubmissions() {
+  const inbox = $("submissionInbox");
+  inbox.replaceChildren();
+
+  const typeFilter = $("submissionTypeFilter").value;
+  const statusFilter = $("submissionStatusFilter").value;
+
+  let filtered = teacherSubmissions.filter(item => {
+    const matchesType =
+      typeFilter === "all" || item.type === typeFilter;
+
+    const matchesStatus =
+      statusFilter === "all" || item.status === statusFilter;
+
+    return matchesType && matchesStatus;
+  });
+
+  if (filtered.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "empty-message";
+    empty.textContent = teacherSubmissions.length === 0
+      ? "No student submissions yet."
+      : "No submissions match these filters.";
+
+    inbox.appendChild(empty);
+    return;
+  }
+
+  for (const submission of filtered) {
+    renderSubmissionCard(submission);
+  }
+}
+
+function renderSubmissionCard(submission) {
+  const card = document.createElement("div");
+  card.className = "submission-card";
+
+  const type = document.createElement("span");
+  type.className = "submission-type";
+  type.textContent = submission.type === "missing"
+    ? "MISSING ASSIGNMENT"
+    : "COMPLETED WORK";
+
+  const heading = document.createElement("h3");
+  heading.textContent = submission.assignmentName || "Untitled assignment";
+
+  const meta = document.createElement("div");
+  meta.className = "submission-meta";
+  meta.textContent =
+    "Submitted: " + formatSubmissionDate(submission.submittedAt);
+
+  const student = document.createElement("p");
+  student.textContent =
+    "Student: " +
+    (submission.studentName || "Name unavailable") +
+    " (" + (submission.studentEmail || "Email unavailable") + ")";
+
+  const classInfo = document.createElement("p");
+  classInfo.textContent =
+    "Class: " +
+    (submission.className || "Unknown class") +
+    " — Period " +
+    (submission.classPeriod || "");
+
+  card.append(type, heading, meta, student, classInfo);
+
+  if (submission.assignedDate) {
+    const assigned = document.createElement("p");
+    assigned.textContent =
+      "Date assigned: " + submission.assignedDate;
+    card.appendChild(assigned);
+  }
+
+  if (submission.notes) {
+    const notes = document.createElement("p");
+    notes.textContent = "Student notes: " + submission.notes;
+    card.appendChild(notes);
+  }
+
+  if (Array.isArray(submission.driveLinks) &&
+      submission.driveLinks.length > 0) {
+
+    const linkHeading = document.createElement("p");
+    linkHeading.textContent = "Google Drive evidence:";
+    card.appendChild(linkHeading);
+
+    const linkList = document.createElement("ul");
+    linkList.className = "submission-links";
+
+    submission.driveLinks.forEach((link, index) => {
+      const listItem = document.createElement("li");
+
+      try {
+        const url = new URL(link);
+
+        if (
+          url.protocol === "https:" &&
+          ["drive.google.com", "docs.google.com"].includes(url.hostname)
+        ) {
+          const anchor = document.createElement("a");
+          anchor.href = url.href;
+          anchor.target = "_blank";
+          anchor.rel = "noopener noreferrer";
+          anchor.textContent = "Open Drive file " + (index + 1);
+
+          listItem.appendChild(anchor);
+        } else {
+          listItem.textContent = "Invalid Drive link";
+        }
+      } catch {
+        listItem.textContent = "Invalid Drive link";
+      }
+
+      linkList.appendChild(listItem);
+    });
+
+    card.appendChild(linkList);
+  } else {
+    const noLinks = document.createElement("p");
+    noLinks.className = "inbox-message";
+    noLinks.textContent = "No Drive links attached.";
+    card.appendChild(noLinks);
+  }
+
+  // Status controls
+  const statusRow = document.createElement("div");
+  statusRow.className = "submission-status-row";
+
+  const statusLabel = document.createElement("label");
+  statusLabel.textContent = "Submission status";
+
+  const statusSelect = document.createElement("select");
+
+  submissionStatuses.forEach(status => {
+    const option = document.createElement("option");
+    option.value = status.value;
+    option.textContent = status.label;
+    statusSelect.appendChild(option);
+  });
+
+  statusSelect.value = submissionStatuses.some(
+    item => item.value === submission.status
+  ) ? submission.status : "new";
+
+  statusLabel.appendChild(statusSelect);
+
+  const saveButton = document.createElement("button");
+  saveButton.type = "button";
+  saveButton.textContent = "Save Status";
+
+  saveButton.addEventListener("click", async () => {
+    const newStatus = statusSelect.value;
+
+    if (newStatus === submission.status) {
+      showInboxMessage("No status change to save.");
+      return;
+    }
+
+    saveButton.disabled = true;
+    saveButton.textContent = "Saving...";
+
+    try {
+      await updateDoc(
+        doc(db, "submissions", submission.id),
+        { status: newStatus }
+      );
+
+      submission.status = newStatus;
+
+      showInboxMessage("Submission status updated.");
+      renderTeacherSubmissions();
+
+    } catch (error) {
+      console.error("Unable to update submission:", error);
+
+      showInboxMessage(
+        "Unable to update status: " + error.message,
+        true
+      );
+
+      saveButton.disabled = false;
+      saveButton.textContent = "Save Status";
+    }
+  });
+
+  statusRow.append(statusLabel, saveButton);
+  card.appendChild(statusRow);
+
+  const statusText = document.createElement("p");
+  statusText.className = "inbox-message";
+  statusText.textContent =
+    "Current status: " +
+    (submissionStatuses.find(
+      item => item.value === submission.status
+    )?.label || submission.status);
+
+  card.appendChild(statusText);
+
+  $("submissionInbox").appendChild(card);
+}
+
+
+// FILTERS AND REFRESH
+
+$("refreshSubmissions").addEventListener(
+  "click",
+  loadTeacherSubmissions
+);
+
+$("submissionTypeFilter").addEventListener(
+  "change",
+  renderTeacherSubmissions
+);
+
+$("submissionStatusFilter").addEventListener(
+  "change",
+  renderTeacherSubmissions
+);
 // ------------------------------
 // AUTH STATE
 // ------------------------------
@@ -1395,6 +1862,7 @@ onAuthStateChanged(auth, async user => {
 
 if (profile.role === "teacher") {
   await loadClasses();
+    await loadTeacherSubmissions();
 }
 
 if (profile.role === "student") {
