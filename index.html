@@ -1439,6 +1439,43 @@ const teachers = [...new Set(
   }
 }
 
+  function populatePreviousClasses() {
+  const select = $("previousClass");
+  select.innerHTML = '<option value="">Select a previously used class</option>';
+
+  const recentClasses = new Map();
+
+  // Sort submissions newest first.
+  const sortedSubmissions = [...studentSubmissions].sort((a, b) => {
+    const dateA = a.submittedAt?.toMillis?.() || 0;
+    const dateB = b.submittedAt?.toMillis?.() || 0;
+    return dateB - dateA;
+  });
+
+  // Keep only the most recently used submission for each class.
+  sortedSubmissions.forEach(submission => {
+    if (!recentClasses.has(submission.classId)) {
+      recentClasses.set(submission.classId, submission);
+    }
+  });
+
+  recentClasses.forEach(submission => {
+    const activeClass = activeClasses.find(
+      item => item.id === submission.classId
+    );
+
+    // Only include classes that are currently active.
+    if (!activeClass) return;
+
+    const option = document.createElement("option");
+    option.value = activeClass.id;
+    option.textContent =
+      `${activeClass.name} — Period ${activeClass.period} (${activeClass.teacherEmail})`;
+
+    select.appendChild(option);
+  });
+}
+
 function loadClassesForSelectedTeacher() {
   const teacherEmail = $("studentTeacher").value;
   const classSelect = $("studentClass");
@@ -1697,6 +1734,8 @@ async function loadStudentHistory() {
       id: item.id,
       ...item.data()
     }));
+
+    populatePreviousClasses();
 
     $("studentHistoryMessage").textContent =
       studentSubmissions.length +
