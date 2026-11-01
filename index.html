@@ -225,6 +225,88 @@ small { color: var(--muted); }
   .form-row, .class-fields { grid-template-columns: 1fr; }
   .class-item-top { align-items: flex-start; }
 }
+
+select,
+textarea {
+  width: 100%;
+  background: #0b1020;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 12px;
+  color: var(--text);
+  font-size: 15px;
+  margin-top: 7px;
+  font-family: Arial, sans-serif;
+}
+
+textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.drive-section {
+  border-top: 1px solid var(--border);
+  margin-top: 25px;
+  padding-top: 20px;
+}
+
+.drive-section h3 {
+  margin-bottom: 5px;
+}
+
+.drive-link-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.drive-link-row input {
+  flex: 1;
+  min-width: 0;
+  margin-top: 0;
+}
+
+.drive-link-row button {
+  flex-shrink: 0;
+  padding: 10px 13px;
+}
+
+.drive-help {
+  font-size: 12px;
+  margin-top: 12px;
+}
+
+.submission-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+#submissionMessage {
+  margin-top: 15px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.submission-success {
+  color: var(--green);
+}
+
+.submission-error {
+  color: var(--red);
+}
+
+@media (max-width: 550px) {
+  .drive-link-row {
+    flex-wrap: wrap;
+  }
+
+  .drive-link-row input {
+    flex-basis: 100%;
+  }
+}  
 </style>
 </head>
 
@@ -356,7 +438,102 @@ small { color: var(--muted); }
     </button>
     <p><small>Assignment reporting and work submission are coming next.</small></p>
   </div>
+  <!-- STUDENT SUBMISSION FORM -->
+  <div id="submissionPanel" class="panel hidden">
+    <h2>Submit Assignment Information</h2>
 
+    <p id="submissionClassInfo"></p>
+
+    <form id="submissionForm">
+
+      <label>
+        Submission type
+        <select id="submissionType" required>
+          <option value="missing">Missing assignment</option>
+          <option value="completed">Completed work</option>
+        </select>
+      </label>
+
+      <label>
+        Assignment name
+        <input
+          id="assignmentName"
+          type="text"
+          maxlength="200"
+          placeholder="Enter the assignment name"
+          required
+        >
+      </label>
+
+      <label>
+        Date assigned (optional)
+        <input
+          id="assignedDate"
+          type="date"
+        >
+      </label>
+
+      <label>
+        Additional notes (optional)
+        <textarea
+          id="submissionNotes"
+          maxlength="1000"
+          rows="4"
+          placeholder="Add any details you want your teacher to know..."
+        ></textarea>
+      </label>
+
+      <div class="drive-section">
+        <h3>Google Drive Evidence (Optional)</h3>
+        <p>
+          Attach links to documents, photos, or other work
+          related to this assignment.
+        </p>
+
+        <div id="driveLinksList"></div>
+
+        <button
+          type="button"
+          id="addDriveLink"
+          class="secondary"
+        >
+          + Add Drive Link
+        </button>
+
+        <button
+          type="button"
+          id="chooseDriveFiles"
+          class="secondary"
+          disabled
+        >
+          Choose from Google Drive
+        </button>
+
+        <p class="drive-help">
+          Google Drive selection will be available after
+          Google Picker is configured. For now, paste a
+          shareable Drive link above.
+        </p>
+      </div>
+
+      <div id="submissionMessage"></div>
+
+      <div class="submission-actions">
+        <button type="submit" id="submitAssignment">
+          Submit
+        </button>
+
+        <button
+          type="button"
+          id="cancelSubmission"
+          class="secondary"
+        >
+          Back
+        </button>
+      </div>
+
+    </form>
+  </div>
 </section>
 
 
