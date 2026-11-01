@@ -1271,10 +1271,10 @@ async function handleGooglePickerResult(data, accessToken) {
     );
   } else {
     showSubmissionMessage(
-      added > 0
-        ? `${added} file(s) added and shared with your teacher.`
-        : "No new files were added."
-    );
+  added > 0
+    ? `${added} ${added === 1 ? "file" : "files"} added and shared with your teacher.`
+    : "No new files were added."
+);
   }
 }
 
