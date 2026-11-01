@@ -1090,7 +1090,7 @@ $("submissionForm").addEventListener("submit", async event => {
 // ------------------------------
 
 const GOOGLE_PICKER_API_KEY =
-  "AIzaSyBKtWvElYaOj3QrVqXq_okvk5lsZnbpLhg";
+  "AIzaSyA1R6Do6rwE-YXKYkL2zdxF3XlUak5DJmY";
 
 const GOOGLE_PICKER_CLIENT_ID =
   "525364895472-hvc0kvjef4vukd1j25kcur58itpujn35.apps.googleusercontent.com";
