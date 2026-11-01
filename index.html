@@ -1121,14 +1121,239 @@ $("studentClass").addEventListener(
 $("continueToSubmit").addEventListener("click", () => {
   if (!selectedClass) return;
 
-  // Temporary confirmation until the submission form is built.
-  $("studentClassMessage").textContent =
-    "Selected " + selectedClass.name +
-    ", Period " + selectedClass.period + ".";
+  $("submissionClassInfo").textContent =
+    selectedClass.name +
+    " — Period " + selectedClass.period +
+    " (" + selectedClass.teacherEmail + ")";
 
-  console.log("Selected class:", selectedClass);
+  $("submissionPanel").classList.remove("hidden");
+
+  $("submissionPanel").scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
 });
 
+
+// ------------------------------
+// STUDENT SUBMISSIONS
+// ------------------------------
+
+function showSubmissionMessage(message, isError = false) {
+  const container = $("submissionMessage");
+  container.replaceChildren();
+
+  const messageElement = document.createElement("div");
+
+  messageElement.className = isError
+    ? "submission-error"
+    : "submission-success";
+
+  messageElement.textContent = message;
+  container.appendChild(messageElement);
+}
+
+
+// ADD / REMOVE DRIVE LINKS
+
+function addDriveLinkField(value = "") {
+  const container = $("driveLinksList");
+
+  if (container.children.length >= 10) {
+    showSubmissionMessage(
+      "You can add a maximum of 10 Drive links.",
+      true
+    );
+    return;
+  }
+
+  const row = document.createElement("div");
+  row.className = "drive-link-row";
+
+  const input = document.createElement("input");
+  input.type = "url";
+  input.placeholder = "Paste a Google Drive link";
+  input.value = value;
+  input.setAttribute("aria-label", "Google Drive link");
+
+  const removeButton = document.createElement("button");
+  removeButton.type = "button";
+  removeButton.className = "danger";
+  removeButton.textContent = "Remove";
+
+  removeButton.addEventListener("click", () => {
+    row.remove();
+  });
+
+  row.append(input, removeButton);
+  container.appendChild(row);
+}
+
+$("addDriveLink").addEventListener("click", () => {
+  addDriveLinkField();
+});
+
+
+// GOOGLE DRIVE LINK VALIDATION
+
+function getDriveLinks() {
+  const inputs = [
+    ...$("driveLinksList").querySelectorAll("input")
+  ];
+
+  const links = [];
+
+  for (const input of inputs) {
+    const value = input.value.trim();
+
+    if (!value) continue;
+
+    let url;
+
+    try {
+      url = new URL(value);
+    } catch {
+      throw new Error("One of your Drive links is not a valid URL.");
+    }
+
+    const validHost = [
+      "drive.google.com",
+      "docs.google.com"
+    ].includes(url.hostname);
+
+    if (
+      url.protocol !== "https:" ||
+      !validHost
+    ) {
+      throw new Error(
+        "Please use a Google Drive or Google Docs link."
+      );
+    }
+
+    links.push(value);
+  }
+
+  return links;
+}
+
+
+// CANCEL / RESET
+
+$("cancelSubmission").addEventListener("click", () => {
+  $("submissionForm").reset();
+  $("driveLinksList").replaceChildren();
+  $("submissionMessage").replaceChildren();
+
+  $("submissionPanel").classList.add("hidden");
+
+  $("studentClassMessage").textContent =
+    "You can change your selected class above.";
+
+  $("studentDashboard").scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+});
+
+
+// SUBMIT TO FIRESTORE
+
+$("submissionForm").addEventListener("submit", async event => {
+  event.preventDefault();
+
+  if (!currentUser || !selectedClass) {
+    showSubmissionMessage(
+      "Please sign in and select a class first.",
+      true
+    );
+    return;
+  }
+
+  const assignmentName = $("assignmentName").value.trim();
+  const assignedDate = $("assignedDate").value;
+  const notes = $("submissionNotes").value.trim();
+  const type = $("submissionType").value;
+
+  if (!assignmentName) {
+    showSubmissionMessage(
+      "Please enter the assignment name.",
+      true
+    );
+    return;
+  }
+
+  let driveLinks;
+
+  try {
+    driveLinks = getDriveLinks();
+  } catch (error) {
+    showSubmissionMessage(error.message, true);
+    return;
+  }
+
+  const submitButton = $("submitAssignment");
+
+  submitButton.disabled = true;
+  submitButton.textContent = "Submitting...";
+
+  try {
+    await addDoc(collection(db, "submissions"), {
+      studentId: currentUser.uid,
+      studentEmail: currentUser.email.toLowerCase(),
+      studentName: currentUser.displayName || "",
+
+      teacherId: selectedClass.teacherId,
+      teacherEmail: selectedClass.teacherEmail,
+
+      classId: selectedClass.id,
+      className: selectedClass.name,
+      classPeriod: selectedClass.period,
+
+      type,
+      assignmentName,
+      assignedDate,
+      notes,
+      driveLinks,
+
+      status: "new",
+      submittedAt: serverTimestamp()
+    });
+
+    $("submissionForm").reset();
+    $("driveLinksList").replaceChildren();
+
+    showSubmissionMessage(
+      "Your submission was received successfully!"
+    );
+
+    $("submissionPanel").scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+
+  } catch (error) {
+    console.error("Submission failed:", error);
+
+    showSubmissionMessage(
+      "Unable to submit: " + error.message,
+      true
+    );
+
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = "Submit";
+  }
+});
+
+
+// DRIVE PICKER PLACEHOLDER
+
+$("chooseDriveFiles").addEventListener("click", () => {
+  showSubmissionMessage(
+    "Google Drive selection has not been configured yet.",
+    true
+  );
+});
   
 // ------------------------------
 // AUTH STATE
