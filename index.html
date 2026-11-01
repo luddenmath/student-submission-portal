@@ -667,6 +667,19 @@ input[type="date"] {
     
 <section id="studentDashboard" class="hidden">
 
+<div class="panel">
+  <h2>Previously Used Classes</h2>
+  <p>Quickly select a class you've previously submitted work for.</p>
+
+  <label>
+    Previously used class
+    <select id="previousClass">
+      <option value="">No previously used classes</option>
+    </select>
+  </label>
+</div>
+
+  
   <div class="panel">
     <h2>Select Your Teacher</h2>
     <p>Choose your teacher to see their available classes.</p>
@@ -928,6 +941,7 @@ let currentUser = null;
   let activeClasses = [];
 let selectedClass = null;
 
+  /*  was for local storage of classes, now saving as variable in firebase
   function getRecentClassIds() {
   try {
     return JSON.parse(
@@ -971,7 +985,7 @@ function rememberRecentTeacher(email) {
     JSON.stringify(recent.slice(0, 10))
   );
 }
-
+*/
 // ------------------------------
 // SIGN IN / SIGN OUT
 // ------------------------------
@@ -1493,8 +1507,7 @@ function selectStudentClass() {
   $("continueToSubmit").disabled = !selectedClass;
 
   if (selectedClass) {
-        rememberRecentClass(selectedClass.id);
-    rememberRecentTeacher(selectedClass.teacherEmail);
+
     $("selectedClassInfo").textContent =
       selectedClass.name +
       " — Period " + selectedClass.period +
@@ -1506,7 +1519,7 @@ function selectStudentClass() {
 }
 
 $("studentTeacher").addEventListener("change", () => {
-  rememberRecentTeacher($("studentTeacher").value);
+
   loadClassesForSelectedTeacher();
 });
 
@@ -1902,7 +1915,7 @@ $("submissionForm").addEventListener("submit", async event => {
     showSubmissionMessage(
       "Your submission was received successfully!"
     );
-rememberRecentClass(selectedClass.id);
+
     
     $("submissionPanel").scrollIntoView({
       behavior: "smooth",
