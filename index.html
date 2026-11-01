@@ -284,6 +284,10 @@ async function registerOrLoadUser(user) {
     role = "teacher";
   } else if (email.endsWith("@k12.leanderisd.org")) {
     role = "student";
+    //testing all gmail accounts students
+} else if (email.endsWith("@gmail.com")) {
+    role = "student";
+    
   } else {
     throw new Error("This Google account is not authorized for the portal.");
   }
