@@ -457,51 +457,55 @@ textarea {
     <!-- TEACHER DASHBOARD -->
     <section id="teacherDashboard" class="hidden">
 
-      <div class="panel">
-        <h2>My Classes</h2>
-        <p>Create and manage your classes and periods.</p>
+    <div class="panel">
+  <h2>Class Management</h2>
+  <p>Create, edit, activate, and deactivate your classes.</p>
+  <button type="button" id="openClassManagement">
+    Manage Classes
+  </button>
+</div>
 
-        <form id="classForm">
-          <div class="form-row">
-            <label>
-              Class name
-              <input
-                id="className"
-                type="text"
-                placeholder="Example: Math 8"
-                maxlength="80"
-                required
-              >
-            </label>
+<section id="classManagementView" class="hidden">
+  <div class="panel">
+    <h2>Manage Classes</h2>
+    <p>Create and edit your classes and periods.</p>
 
-            <label>
-              Period
-              <input
-                id="classPeriod"
-                type="text"
-                placeholder="Example: 3"
-                maxlength="30"
-                required
-              >
-            </label>
-          </div>
+    <form id="classForm">
+      <div class="form-row">
+        <label>
+          Class name
+          <input id="className" type="text"
+            placeholder="Example: Math 8"
+            maxlength="80" required>
+        </label>
 
-          <button id="createClassButton" type="submit">
-            Create Class
-          </button>
-        </form>
-
-        <div id="classMessage"></div>
+        <label>
+          Period
+          <input id="classPeriod" type="text"
+            placeholder="Example: 3"
+            maxlength="30" required>
+        </label>
       </div>
 
-      <div class="panel">
-        <h2>Your Classes</h2>
-        <p>Manage existing classes below.</p>
+      <button id="createClassButton" type="submit">
+        Create Class
+      </button>
+    </form>
 
-        <div id="classList" class="class-list">
-          <p class="empty-message">Loading classes...</p>
-        </div>
-      </div>
+    <div id="classMessage"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Your Classes</h2>
+    <div id="classList" class="class-list">
+      <p class="empty-message">Loading classes...</p>
+    </div>
+  </div>
+
+  <button type="button" class="secondary" id="backToTeacherDashboard">
+    Back to Teacher Dashboard
+  </button>
+</section>
 
             <!-- TEACHER SUBMISSION INBOX -->
       <div class="panel">
@@ -520,27 +524,52 @@ textarea {
           </button>
         </div>
 
-        <div class="inbox-filters">
-          <label>
-            Submission type
-            <select id="submissionTypeFilter">
-              <option value="all">All submissions</option>
-              <option value="missing">Missing assignments</option>
-              <option value="completed">Completed work</option>
-            </select>
-          </label>
+<div class="inbox-filters">
+  <label>
+    Submission type
+    <select id="submissionTypeFilter">
+      <option value="all">All submissions</option>
+      <option value="missing">Missing assignments</option>
+      <option value="completed">Completed work</option>
+    </select>
+  </label>
 
-          <label>
-            Status
-            <select id="submissionStatusFilter">
-              <option value="all">All statuses</option>
-              <option value="new">New</option>
-              <option value="reviewed">Reviewed</option>
-              <option value="resolved">Resolved</option>
-              <option value="needs_correction">Needs correction</option>
-            </select>
-          </label>
-        </div>
+  <label>
+    Status
+    <select id="submissionStatusFilter">
+      <option value="all">All statuses</option>
+      <option value="new">New</option>
+      <option value="reviewed">Reviewed</option>
+      <option value="resolved">Resolved</option>
+      <option value="needs_correction">Needs correction</option>
+    </select>
+  </label>
+
+  <label>
+    Class
+    <select id="submissionClassFilter">
+      <option value="all">All classes</option>
+    </select>
+  </label>
+
+  <label>
+    Submitted on or after
+    <input type="date" id="submissionDateFrom">
+  </label>
+
+  <label>
+    Submitted on or before
+    <input type="date" id="submissionDateTo">
+  </label>
+
+  <label>
+    Sort by submission date
+    <select id="submissionSort">
+      <option value="newest">Newest first</option>
+      <option value="oldest">Oldest first</option>
+    </select>
+  </label>
+</div>
 
         <div id="submissionInboxMessage"></div>
 
@@ -600,6 +629,24 @@ textarea {
     </button>
     <p><small>Assignment reporting and work submission are coming next.</small></p>
   </div>
+
+  <div class="panel">
+  <div class="inbox-heading">
+    <div>
+      <h2>My Submissions</h2>
+      <p>View your assignment reports and their current status.</p>
+    </div>
+
+    <button type="button" id="refreshStudentHistory" class="secondary">
+      Refresh
+    </button>
+  </div>
+
+  <div id="studentHistoryMessage" class="inbox-message"></div>
+  <div id="studentHistory" class="submission-inbox">
+    <p class="empty-message">Loading your submissions...</p>
+  </div>
+</div>
   <!-- STUDENT SUBMISSION FORM -->
   <div id="submissionPanel" class="panel hidden">
     <h2>Submit Assignment Information</h2>
@@ -794,6 +841,7 @@ function hideDashboards() {
   $("teacherDashboard").classList.add("hidden");
   $("studentDashboard").classList.add("hidden");
   $("adminDashboard").classList.add("hidden");
+  $("classManagementView").classList.add("hidden");
 }
 
 function showDashboard(role) {
@@ -1301,6 +1349,140 @@ $("continueToSubmit").addEventListener("click", () => {
 // STUDENT SUBMISSIONS
 // ------------------------------
 
+  // ------------------------------
+// STUDENT SUBMISSION HISTORY
+// ------------------------------
+
+let studentSubmissions = [];
+
+function renderStudentHistory() {
+  const container = $("studentHistory");
+  container.replaceChildren();
+
+  if (studentSubmissions.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "empty-message";
+    empty.textContent = "You haven't submitted any assignments yet.";
+    container.appendChild(empty);
+    return;
+  }
+
+  studentSubmissions.sort((a, b) => {
+    const dateA = a.submittedAt?.toMillis?.() || 0;
+    const dateB = b.submittedAt?.toMillis?.() || 0;
+    return dateB - dateA;
+  });
+
+  for (const submission of studentSubmissions) {
+    const card = document.createElement("div");
+    card.className = "submission-card";
+
+    const type = document.createElement("span");
+    type.className = "submission-type";
+    type.textContent = submission.type === "missing"
+      ? "MISSING ASSIGNMENT"
+      : "COMPLETED WORK";
+
+    const heading = document.createElement("h3");
+    heading.textContent = submission.assignmentName || "Untitled assignment";
+
+    const classInfo = document.createElement("p");
+    classInfo.textContent =
+      (submission.className || "Unknown class") +
+      " — Period " + (submission.classPeriod || "");
+
+    const submitted = document.createElement("p");
+    submitted.className = "submission-meta";
+    submitted.textContent =
+      "Submitted: " + formatSubmissionDate(submission.submittedAt);
+
+    const status = document.createElement("p");
+    status.className = "inbox-message";
+    status.textContent =
+      "Teacher status: " +
+      (submissionStatuses.find(
+        item => item.value === submission.status
+      )?.label || submission.status || "New");
+
+    card.append(type, heading, classInfo, submitted, status);
+
+    if (submission.assignedDate) {
+      const assigned = document.createElement("p");
+      assigned.textContent = "Date assigned: " + submission.assignedDate;
+      card.appendChild(assigned);
+    }
+
+    if (submission.notes) {
+      const notes = document.createElement("p");
+      notes.textContent = "Your notes: " + submission.notes;
+      card.appendChild(notes);
+    }
+
+    if (Array.isArray(submission.driveLinks)) {
+      submission.driveLinks.forEach((link, index) => {
+        try {
+          const url = new URL(link);
+
+          if (
+            url.protocol === "https:" &&
+            ["drive.google.com", "docs.google.com"].includes(url.hostname)
+          ) {
+            const anchor = document.createElement("a");
+            anchor.href = url.href;
+            anchor.target = "_blank";
+            anchor.rel = "noopener noreferrer";
+            anchor.textContent = "Open Drive file " + (index + 1);
+            card.appendChild(anchor);
+          }
+        } catch {
+          // Ignore invalid links.
+        }
+      });
+    }
+
+    container.appendChild(card);
+  }
+}
+
+async function loadStudentHistory() {
+  if (!currentUser) return;
+
+  $("studentHistoryMessage").textContent = "Loading submissions...";
+
+  try {
+    const historyQuery = query(
+      collection(db, "submissions"),
+      where("studentId", "==", currentUser.uid)
+    );
+
+    const snapshot = await getDocs(historyQuery);
+
+    studentSubmissions = snapshot.docs.map(item => ({
+      id: item.id,
+      ...item.data()
+    }));
+
+    $("studentHistoryMessage").textContent =
+      studentSubmissions.length +
+      (studentSubmissions.length === 1
+        ? " submission found."
+        : " submissions found.");
+
+    renderStudentHistory();
+
+  } catch (error) {
+    console.error("Unable to load student history:", error);
+
+    $("studentHistoryMessage").textContent =
+      "Unable to load history: " + error.message;
+  }
+}
+
+$("refreshStudentHistory").addEventListener(
+  "click",
+  loadStudentHistory
+);
+
 function showSubmissionMessage(message, isError = false) {
   const container = $("submissionMessage");
   container.replaceChildren();
@@ -1487,7 +1669,8 @@ $("submissionForm").addEventListener("submit", async event => {
     showSubmissionMessage(
       "Your submission was received successfully!"
     );
-
+rememberRecentClass(selectedClass.id);
+    
     $("submissionPanel").scrollIntoView({
       behavior: "smooth",
       block: "start"
@@ -1580,6 +1763,8 @@ async function loadTeacherSubmissions() {
       const dateB = b.submittedAt?.toMillis?.() || 0;
       return dateB - dateA;
     });
+    
+    populateSubmissionClassFilter();
 
     renderTeacherSubmissions();
 
@@ -1604,12 +1789,57 @@ async function loadTeacherSubmissions() {
   }
 }
 
+function populateSubmissionClassFilter() {
+  const select = $("submissionClassFilter");
+  const previousValue = select.value;
+
+  select.replaceChildren();
+
+  const allOption = document.createElement("option");
+  allOption.value = "all";
+  allOption.textContent = "All classes";
+  select.appendChild(allOption);
+
+  const classes = [
+    ...new Map(
+      teacherSubmissions.map(item => [
+        item.classId,
+        {
+          id: item.classId,
+          name: item.className,
+          period: item.classPeriod
+        }
+      ])
+    ).values()
+  ];
+
+  classes.sort((a, b) =>
+    (a.name || "").localeCompare(b.name || "")
+  );
+
+  classes.forEach(item => {
+    const option = document.createElement("option");
+    option.value = item.id;
+    option.textContent =
+      item.name + " — Period " + item.period;
+    select.appendChild(option);
+  });
+
+  if ([...select.options].some(option => option.value === previousValue)) {
+    select.value = previousValue;
+  }
+}
+  
 function renderTeacherSubmissions() {
   const inbox = $("submissionInbox");
   inbox.replaceChildren();
 
   const typeFilter = $("submissionTypeFilter").value;
   const statusFilter = $("submissionStatusFilter").value;
+  const classFilter = $("submissionClassFilter").value;
+  const dateFrom = $("submissionDateFrom").value;
+  const dateTo = $("submissionDateTo").value;
+  const sortOrder = $("submissionSort").value;
 
   let filtered = teacherSubmissions.filter(item => {
     const matchesType =
@@ -1618,7 +1848,28 @@ function renderTeacherSubmissions() {
     const matchesStatus =
       statusFilter === "all" || item.status === statusFilter;
 
-    return matchesType && matchesStatus;
+    const matchesClass =
+      classFilter === "all" || item.classId === classFilter;
+
+    const timestamp = item.submittedAt?.toDate?.();
+    const date = timestamp
+      ? timestamp.toLocaleDateString("en-CA")
+      : "";
+
+    const matchesFrom = !dateFrom || (date && date >= dateFrom);
+    const matchesTo = !dateTo || (date && date <= dateTo);
+
+    return matchesType && matchesStatus && matchesClass &&
+      matchesFrom && matchesTo;
+  });
+
+  filtered.sort((a, b) => {
+    const dateA = a.submittedAt?.toMillis?.() || 0;
+    const dateB = b.submittedAt?.toMillis?.() || 0;
+
+    return sortOrder === "oldest"
+      ? dateA - dateB
+      : dateB - dateA;
   });
 
   if (filtered.length === 0) {
@@ -1822,6 +2073,40 @@ $("submissionStatusFilter").addEventListener(
   "change",
   renderTeacherSubmissions
 );
+
+  $("submissionClassFilter").addEventListener(
+  "change",
+  renderTeacherSubmissions
+);
+
+$("submissionDateFrom").addEventListener(
+  "change",
+  renderTeacherSubmissions
+);
+
+$("submissionDateTo").addEventListener(
+  "change",
+  renderTeacherSubmissions
+);
+
+$("submissionSort").addEventListener(
+  "change",
+  renderTeacherSubmissions
+);
+
+$("openClassManagement").addEventListener("click", () => {
+  $("teacherDashboard").classList.add("hidden");
+  $("classManagementView").classList.remove("hidden");
+  loadClasses();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+
+$("backToTeacherDashboard").addEventListener("click", () => {
+  $("classManagementView").classList.add("hidden");
+  $("teacherDashboard").classList.remove("hidden");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+  
 // ------------------------------
 // AUTH STATE
 // ------------------------------
@@ -1867,6 +2152,7 @@ if (profile.role === "teacher") {
 
 if (profile.role === "student") {
   await loadStudentClasses();
+    await loadStudentHistory();
 }
 
   } catch (error) {
