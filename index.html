@@ -95,6 +95,22 @@ button:hover { opacity: .85; }
   padding: 22px;
 }
 
+.access-error {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid #ef4444;
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.10);
+  color: #fca5a5;
+  line-height: 1.5;
+}
+
+.access-error strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #f87171;
+}
+  
 .dashboard-card h3 { margin-top: 0; }
 
 small { color: var(--muted); }
@@ -118,6 +134,7 @@ small { color: var(--muted); }
     </p>
     <button id="signIn">Sign in with Google</button>
     <div id="status"></div>
+    <div id="accessError" class="access-error" hidden></div>
   </section>
 
   <section id="dashboard" class="hidden">
@@ -206,8 +223,10 @@ const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
 const $ = id => document.getElementById(id);
-
+document.getElementById("accessError").hidden = true;
+  
 $("signIn").addEventListener("click", async () => {
+  $("accessError").hidden = true;
   $("status").textContent = "Signing in...";
 
   try {
@@ -295,8 +314,8 @@ async function registerOrLoadUser(user) {
 }
 
 onAuthStateChanged(auth, async user => {
-  $("loginPanel").classList.toggle("hidden", !!user);
   $("dashboard").classList.add("hidden");
+  $("loginPanel").classList.remove("hidden");
   $("signOut").classList.toggle("hidden", !user);
   hideDashboards();
 
@@ -305,7 +324,8 @@ onAuthStateChanged(auth, async user => {
     return;
   }
 
-  $("status").textContent = "Loading account...";
+  $("status").textContent = "Checking account access...";
+  $("accessError").hidden = true;
 
   try {
     const profile = await registerOrLoadUser(user);
@@ -314,16 +334,42 @@ onAuthStateChanged(auth, async user => {
       "Welcome, " + (profile.displayName || user.displayName || "User");
 
     $("accountInfo").textContent = user.email;
-    $("roleInfo").textContent =
-      "Account type: " + profile.role;
+    $("roleInfo").textContent = "Account type: " + profile.role;
 
     showDashboard(profile.role);
 
     $("dashboard").classList.remove("hidden");
+    $("loginPanel").classList.add("hidden");
     $("status").textContent = "";
 
   } catch (error) {
-    $("status").textContent = error.message;
+    console.error("Account authorization failed:", error);
+
+    let message = error.message || "An unexpected error occurred.";
+
+    if (
+      error.code === "permission-denied" ||
+      error.code === "firestore/permission-denied" ||
+      message.toLowerCase().includes("insufficient permissions")
+    ) {
+      message =
+        "Your Google account was recognized, but the portal could not create or access your account profile. Please contact the portal administrator.";
+    }
+
+    $("accessError").replaceChildren();
+
+    const heading = document.createElement("strong");
+    heading.textContent = "Access not available";
+
+    const detail = document.createElement("div");
+    detail.textContent = message;
+
+    $("accessError").append(heading, detail);
+    $("accessError").hidden = false;
+
+    $("status").textContent = "";
+
+    // Sign out without allowing the error message to disappear.
     await signOut(auth);
   }
 });
