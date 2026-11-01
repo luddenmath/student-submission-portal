@@ -680,6 +680,7 @@ $("continueToSubmit").addEventListener("click", () => {
     " (" + selectedClass.teacherEmail + ")";
 
   $("submissionPanel").classList.remove("hidden");
+  $("chooseDriveFiles").disabled = false;
 
   $("submissionPanel").scrollIntoView({
     behavior: "smooth",
@@ -1082,13 +1083,234 @@ $("submissionForm").addEventListener("submit", async event => {
 });
 
 
-// DRIVE PICKER PLACEHOLDER
+// GDRIVE File Picker
 
-$("chooseDriveFiles").addEventListener("click", () => {
-  showSubmissionMessage(
-    "Google Drive selection has not been configured yet.",
-    true
+// ------------------------------
+// GOOGLE DRIVE PICKER
+// ------------------------------
+
+const GOOGLE_PICKER_API_KEY =
+  "AIzaSyBKtWvElYaOj3QrVqXq_okvk5lsZnbpLhg";
+
+const GOOGLE_PICKER_CLIENT_ID =
+  "525364895472-hvc0kvjef4vukd1j25kcur58itpujn35.apps.googleusercontent.com";
+
+const GOOGLE_PICKER_PROJECT_NUMBER = "525364895472";
+
+const GOOGLE_DRIVE_SCOPE =
+  "https://www.googleapis.com/auth/drive.file";
+
+let pickerConsentGranted = false;
+
+function loadGooglePicker() {
+  return new Promise((resolve, reject) => {
+    if (!window.gapi) {
+      reject(new Error("Google API library did not load."));
+      return;
+    }
+
+    window.gapi.load("picker", {
+      callback: resolve,
+      onerror: () => reject(
+        new Error("Unable to load Google Drive Picker.")
+      )
+    });
+  });
+}
+
+function requestDriveAccessToken() {
+  return new Promise((resolve, reject) => {
+    if (!window.google?.accounts?.oauth2) {
+      reject(new Error("Google authorization library did not load."));
+      return;
+    }
+
+    const tokenClient = window.google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_PICKER_CLIENT_ID,
+      scope: GOOGLE_DRIVE_SCOPE,
+
+      callback: response => {
+        if (response.error) {
+          reject(new Error(
+            response.error_description || response.error
+          ));
+          return;
+        }
+
+        pickerConsentGranted = true;
+        resolve(response.access_token);
+      }
+    });
+
+    tokenClient.requestAccessToken({
+      prompt: pickerConsentGranted ? "" : "consent"
+    });
+  });
+}
+
+async function shareDriveFileWithTeacher(fileId, accessToken) {
+  if (!selectedClass?.teacherEmail) {
+    throw new Error("Please select a class and teacher first.");
+  }
+
+  const response = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/permissions?sendNotificationEmail=true&fields=id`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + accessToken,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        type: "user",
+        role: "reader",
+        emailAddress: selectedClass.teacherEmail
+      })
+    }
   );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+
+    throw new Error(
+      errorData.error?.message ||
+      "Google Drive could not share this file with your teacher."
+    );
+  }
+}
+
+function createGooglePicker(accessToken) {
+  const picker = new window.google.picker.PickerBuilder()
+    .addView(window.google.picker.ViewId.DOCS)
+    .addView(new window.google.picker.DocsUploadView())
+    .enableFeature(window.google.picker.Feature.MULTISELECT_ENABLED)
+    .setOAuthToken(accessToken)
+    .setDeveloperKey(GOOGLE_PICKER_API_KEY)
+    .setAppId(GOOGLE_PICKER_PROJECT_NUMBER)
+    .setCallback(data => handleGooglePickerResult(data, accessToken))
+    .build();
+
+  picker.setVisible(true);
+}
+
+async function handleGooglePickerResult(data, accessToken) {
+  const picker = window.google.picker;
+
+  if (data[picker.Response.ACTION] !== picker.Action.PICKED) {
+    return;
+  }
+
+  const files = data[picker.Response.DOCUMENTS] || [];
+
+  if (files.length === 0) return;
+
+  const container = $("driveLinksList");
+
+  const existingLinks = [
+    ...container.querySelectorAll('input[type="url"]')
+  ].map(input => input.value.trim());
+
+  const remainingSlots = 10 - container.children.length;
+
+  if (remainingSlots <= 0) {
+    showSubmissionMessage(
+      "You already have the maximum of 10 Drive links.",
+      true
+    );
+    return;
+  }
+
+  const selectedFiles = files.slice(0, remainingSlots);
+
+  if (files.length > remainingSlots) {
+    showSubmissionMessage(
+      `Only ${remainingSlots} additional file(s) can be attached.`
+    );
+  } else {
+    showSubmissionMessage("Sharing selected files with your teacher...");
+  }
+
+  let added = 0;
+  const failed = [];
+
+  for (const file of selectedFiles) {
+    const fileId = file[picker.Document.ID];
+    const fileName = file[picker.Document.NAME] || "Drive file";
+
+    if (!fileId) {
+      failed.push(fileName + ": Missing file ID.");
+      continue;
+    }
+
+    const fileUrl =
+      file[picker.Document.URL] ||
+      `https://drive.google.com/open?id=${encodeURIComponent(fileId)}`;
+
+    if (existingLinks.includes(fileUrl)) {
+      continue;
+    }
+
+    try {
+      await shareDriveFileWithTeacher(fileId, accessToken);
+
+      addDriveLinkField(fileUrl);
+      existingLinks.push(fileUrl);
+      added++;
+
+    } catch (error) {
+      console.error("Unable to share Drive file:", error);
+      failed.push(fileName + ": " + error.message);
+    }
+  }
+
+  if (failed.length > 0) {
+    showSubmissionMessage(
+      `${added} file(s) added. ${failed.length} file(s) could not be shared. ` +
+      failed.join(" "),
+      true
+    );
+  } else {
+    showSubmissionMessage(
+      added > 0
+        ? `${added} file(s) added and shared with your teacher.`
+        : "No new files were added."
+    );
+  }
+}
+
+$("chooseDriveFiles").addEventListener("click", async () => {
+  if (!currentUser || !selectedClass) {
+    showSubmissionMessage(
+      "Please select a class before choosing Drive files.",
+      true
+    );
+    return;
+  }
+
+  const button = $("chooseDriveFiles");
+
+  button.disabled = true;
+  button.textContent = "Opening Google Drive...";
+
+  try {
+    await loadGooglePicker();
+
+    const accessToken = await requestDriveAccessToken();
+
+    createGooglePicker(accessToken);
+
+  } catch (error) {
+    console.error("Google Drive Picker error:", error);
+
+    showSubmissionMessage(
+      "Unable to open Google Drive: " + error.message,
+      true
+    );
+
+  } finally {
+    button.disabled = false;
+    button.textContent = "Choose from Google Drive";
+  }
 });
 
 
