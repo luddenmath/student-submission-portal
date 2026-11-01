@@ -1476,6 +1476,25 @@ const teachers = [...new Set(
   });
 }
 
+
+  function selectPreviousClass() {
+  const classId = $("previousClass").value;
+  if (!classId) return;
+
+  const classData = activeClasses.find(item => item.id === classId);
+  if (!classData) return;
+
+  // Select the teacher.
+  $("studentTeacher").value = classData.teacherEmail;
+
+  // Load that teacher's classes.
+  loadClassesForSelectedTeacher();
+
+  // Select the previously used class.
+  $("studentClass").value = classData.id;
+  selectStudentClass();
+}
+
 function loadClassesForSelectedTeacher() {
   const teacherEmail = $("studentTeacher").value;
   const classSelect = $("studentClass");
@@ -1565,6 +1584,8 @@ $("studentClass").addEventListener(
   selectStudentClass
 );
 
+$("previousClass").addEventListener("change", selectPreviousClass);
+  
 $("continueToSubmit").addEventListener("click", () => {
   if (!selectedClass) return;
 
