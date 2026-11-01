@@ -457,6 +457,8 @@ textarea {
     <!-- TEACHER DASHBOARD -->
     <section id="teacherDashboard" class="hidden">
 
+  <div id="teacherMainView">
+    
     <div class="panel">
   <h2>Class Management</h2>
   <p>Create, edit, activate, and deactivate your classes.</p>
@@ -464,48 +466,6 @@ textarea {
     Manage Classes
   </button>
 </div>
-
-<section id="classManagementView" class="hidden">
-  <div class="panel">
-    <h2>Manage Classes</h2>
-    <p>Create and edit your classes and periods.</p>
-
-    <form id="classForm">
-      <div class="form-row">
-        <label>
-          Class name
-          <input id="className" type="text"
-            placeholder="Example: Math 8"
-            maxlength="80" required>
-        </label>
-
-        <label>
-          Period
-          <input id="classPeriod" type="text"
-            placeholder="Example: 3"
-            maxlength="30" required>
-        </label>
-      </div>
-
-      <button id="createClassButton" type="submit">
-        Create Class
-      </button>
-    </form>
-
-    <div id="classMessage"></div>
-  </div>
-
-  <div class="panel">
-    <h2>Your Classes</h2>
-    <div id="classList" class="class-list">
-      <p class="empty-message">Loading classes...</p>
-    </div>
-  </div>
-
-  <button type="button" class="secondary" id="backToTeacherDashboard">
-    Back to Teacher Dashboard
-  </button>
-</section>
 
             <!-- TEACHER SUBMISSION INBOX -->
       <div class="panel">
@@ -592,6 +552,49 @@ textarea {
         </div>
       </div>
 
+    </section>
+<section id="classManagementView" class="hidden">
+  <div class="panel">
+    <h2>Manage Classes</h2>
+    <p>Create and edit your classes and periods.</p>
+
+    <form id="classForm">
+      <div class="form-row">
+        <label>
+          Class name
+          <input id="className" type="text"
+            placeholder="Example: Math 8"
+            maxlength="80" required>
+        </label>
+
+        <label>
+          Period
+          <input id="classPeriod" type="text"
+            placeholder="Example: 3"
+            maxlength="30" required>
+        </label>
+      </div>
+
+      <button id="createClassButton" type="submit">
+        Create Class
+      </button>
+    </form>
+
+    <div id="classMessage"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Your Classes</h2>
+    <div id="classList" class="class-list">
+      <p class="empty-message">Loading classes...</p>
+    </div>
+  </div>
+
+  <button type="button" class="secondary" id="backToTeacherDashboard">
+    Back to Teacher Dashboard
+  </button>
+</section>
+    
     </section>
 
     <!-- STUDENT DASHBOARD -->
@@ -859,9 +862,11 @@ $("signOut").addEventListener("click", () => signOut(auth));
 
 function hideDashboards() {
   $("teacherDashboard").classList.add("hidden");
+  $("teacherMainView").classList.remove("hidden");
+  $("classManagementView").classList.add("hidden");
+
   $("studentDashboard").classList.add("hidden");
   $("adminDashboard").classList.add("hidden");
-  $("classManagementView").classList.add("hidden");
 }
 
 function showDashboard(role) {
@@ -2149,7 +2154,7 @@ $("submissionSort").addEventListener(
 );
 
 $("openClassManagement").addEventListener("click", () => {
-  $("teacherDashboard").classList.add("hidden");
+  $("teacherMainView").classList.add("hidden");
   $("classManagementView").classList.remove("hidden");
   loadClasses();
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -2157,7 +2162,7 @@ $("openClassManagement").addEventListener("click", () => {
 
 $("backToTeacherDashboard").addEventListener("click", () => {
   $("classManagementView").classList.add("hidden");
-  $("teacherDashboard").classList.remove("hidden");
+  $("teacherMainView").classList.remove("hidden");
   window.scrollTo({ top: 0, behavior: "smooth" });
 });
   
