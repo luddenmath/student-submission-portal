@@ -202,20 +202,28 @@
       </select>
     </label>
 
-    <label id="dailySummaryTimeContainer" class="hidden">
-      Daily summary time
-      <input type="time" id="dailySummaryTime" value="16:00">
-    </label>
+<label id="dailySummaryTimeContainer" class="settings-control">
+  <span>Daily summary time</span>
+  <input type="time" id="dailySummaryTime" value="16:00">
+</label>
 
-    <label class="settings-checkbox">
-      <input type="checkbox" id="studentReceiptEnabled">
-      Send students an email receipt when they submit work
-    </label>
+<button
+  type="button"
+  id="studentReceiptEnabled"
+  class="settings-toggle"
+  aria-pressed="true"
+>
+  Student submission receipts: On
+</button>
 
-    <label class="settings-checkbox">
-      <input type="checkbox" id="studentStatusEmailEnabled">
-      Email students when I change their submission status
-    </label>
+<button
+  type="button"
+  id="studentStatusEmailEnabled"
+  class="settings-toggle"
+  aria-pressed="true"
+>
+  Student status-change emails: On
+</button>
   </div>
 
   <div class="panel">
@@ -242,17 +250,17 @@
     </label>
   </div>
 
-  <div class="panel">
-    <div id="teacherSettingsMessage"></div>
+<div class="panel">
+  <div id="teacherSettingsMessage"></div>
 
-    <button type="button" id="saveTeacherSettings">
-      Save Settings
-    </button>
-
-    <button type="button" class="secondary" id="backFromTeacherSettings">
-      Back to Teacher Dashboard
-    </button>
-  </div>
+  <button
+    type="button"
+    class="secondary"
+    id="backFromTeacherSettings"
+  >
+    Back to Teacher Dashboard
+  </button>
+</div>
 
 </section> 
     </section>
