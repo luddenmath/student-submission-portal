@@ -2003,66 +2003,70 @@ function renderTeacherSubmissions() {
   applyTeacherDisplaySettings();
 }
 
+
 function renderSubmissionCard(submission) {
-const card = document.createElement("div");
-card.className = "submission-card";
-card.dataset.submissionId = submission.id;
+  const card = document.createElement("div");
+  card.className = "submission-card";
+  card.dataset.submissionId = submission.id;
 
-  const type = document.createElement("span");
-  type.className = "submission-type";
+  function makeCell(label, className = "") {
+    const cell = document.createElement("div");
+    cell.className = "submission-cell" + (className ? " " + className : "");
+    cell.dataset.label = label;
+    return cell;
+  }
+
+  // Type
+  const type = makeCell("Type", "cell-type");
   type.textContent = submission.type === "missing"
-    ? "MISSING ASSIGNMENT"
-    : "COMPLETED WORK";
+    ? "MISSING"
+    : "COMPLETED";
 
-  const heading = document.createElement("h3");
-  heading.textContent = submission.assignmentName || "Untitled assignment";
+  // Assignment
+  const assignment = makeCell("Assignment", "cell-assignment");
+  assignment.textContent = submission.assignmentName || "Untitled assignment";
 
-  const meta = document.createElement("div");
-  meta.className = "submission-meta";
-  meta.textContent =
-    "Submitted: " + formatSubmissionDate(submission.submittedAt);
+  // Student
+  const student = makeCell("Student", "cell-student");
+  const studentName = document.createElement("strong");
+  studentName.textContent = submission.studentName || "Name unavailable";
 
-  const student = document.createElement("p");
-  student.textContent =
-    "Student: " +
-    (submission.studentName || "Name unavailable") +
-    " (" + (submission.studentEmail || "Email unavailable") + ")";
+  const studentEmail = document.createElement("small");
+  studentEmail.textContent = submission.studentEmail || "Email unavailable";
 
-  const classInfo = document.createElement("p");
+  student.append(studentName, studentEmail);
+
+  // Class
+  const classInfo = makeCell("Class", "cell-class");
   classInfo.textContent =
-    "Class: " +
     (submission.className || "Unknown class") +
-    " — Period " +
-    (submission.classPeriod || "");
+    (submission.classPeriod ? " — Period " + submission.classPeriod : "");
 
-  card.append(type, heading, meta, student, classInfo);
+  // Submitted date
+  const submitted = makeCell("Submitted", "cell-date");
+  submitted.textContent = formatSubmissionDate(submission.submittedAt);
+
+  // Details: assigned date, notes, and Drive links
+  const details = makeCell("Details", "cell-details");
 
   if (submission.assignedDate) {
-    const assigned = document.createElement("p");
-    assigned.textContent =
-      "Date assigned: " + submission.assignedDate;
-    card.appendChild(assigned);
+    const assigned = document.createElement("div");
+    assigned.textContent = "Assigned: " + submission.assignedDate;
+    details.appendChild(assigned);
   }
 
   if (submission.notes) {
-    const notes = document.createElement("p");
-    notes.textContent = "Student notes: " + submission.notes;
-    card.appendChild(notes);
+    const notes = document.createElement("div");
+    notes.className = "submission-notes";
+    notes.textContent = submission.notes;
+    details.appendChild(notes);
   }
 
-  if (Array.isArray(submission.driveLinks) &&
-      submission.driveLinks.length > 0) {
-
-    const linkHeading = document.createElement("p");
-    linkHeading.textContent = "Google Drive evidence:";
-    card.appendChild(linkHeading);
-
-    const linkList = document.createElement("ul");
-    linkList.className = "submission-links";
+  if (Array.isArray(submission.driveLinks) && submission.driveLinks.length) {
+    const links = document.createElement("div");
+    links.className = "submission-links";
 
     submission.driveLinks.forEach((link, index) => {
-      const listItem = document.createElement("li");
-
       try {
         const url = new URL(link);
 
@@ -2074,99 +2078,104 @@ card.dataset.submissionId = submission.id;
           anchor.href = url.href;
           anchor.target = "_blank";
           anchor.rel = "noopener noreferrer";
-          anchor.textContent = "Open Drive file " + (index + 1);
-
-          listItem.appendChild(anchor);
+          anchor.textContent = "Drive " + (index + 1);
+          links.appendChild(anchor);
         } else {
-          listItem.textContent = "Invalid Drive link";
+          const invalid = document.createElement("span");
+          invalid.textContent = "Invalid link";
+          links.appendChild(invalid);
         }
       } catch {
-        listItem.textContent = "Invalid Drive link";
+        const invalid = document.createElement("span");
+        invalid.textContent = "Invalid link";
+        links.appendChild(invalid);
       }
-
-      linkList.appendChild(listItem);
     });
 
-    card.appendChild(linkList);
-  } else {
-    const noLinks = document.createElement("p");
-    noLinks.className = "inbox-message";
-    noLinks.textContent = "No Drive links attached.";
-    card.appendChild(noLinks);
+    details.appendChild(links);
   }
 
- // Status controls — automatically save on change
-const statusRow = document.createElement("div");
-statusRow.className = "submission-status-row";
+  if (!details.childElementCount) {
+    details.textContent = "—";
+  }
 
-const statusLabel = document.createElement("label");
-statusLabel.textContent = "Submission status";
+  // Status
+  const status = makeCell("Status", "cell-status");
 
-const statusSelect = document.createElement("select");
+  const statusSelect = document.createElement("select");
 
-submissionStatuses.forEach(status => {
-  const option = document.createElement("option");
-  option.value = status.value;
-  option.textContent = status.label;
-  statusSelect.appendChild(option);
-});
+  submissionStatuses.forEach(item => {
+    const option = document.createElement("option");
+    option.value = item.value;
+    option.textContent = item.label;
+    statusSelect.appendChild(option);
+  });
 
-statusSelect.value = submissionStatuses.some(
-  item => item.value === submission.status
-) ? submission.status : "new";
+  statusSelect.value = submissionStatuses.some(
+    item => item.value === submission.status
+  ) ? submission.status : "new";
 
-statusLabel.appendChild(statusSelect);
-statusRow.appendChild(statusLabel);
-card.appendChild(statusRow);
+  const statusDisplay = document.createElement("div");
+  statusDisplay.className = "submission-status-display";
 
-const statusDisplay = document.createElement("p");
-statusDisplay.className = "inbox-message";
-
-const statusBadge = createStatusBadge(submission.status);
-
-statusDisplay.append("Current status: ", statusBadge);
-card.appendChild(statusDisplay);
-
-statusSelect.addEventListener("change", async () => {
-  const previousStatus = submission.status;
-  const newStatus = statusSelect.value;
-
-  if (newStatus === previousStatus) return;
-
-  statusSelect.disabled = true;
-  statusDisplay.textContent = "Saving status...";
-
-  try {
-    await updateDoc(
-      doc(db, "submissions", submission.id),
-      { status: newStatus }
-    );
-
-    submission.status = newStatus;
-
-    showInboxMessage("Submission status saved.");
-    renderTeacherSubmissions();
-
-  } catch (error) {
-    console.error("Unable to update submission:", error);
-
-    statusSelect.value = previousStatus;
-    statusSelect.disabled = false;
-
+  function updateStatusDisplay(value) {
     statusDisplay.replaceChildren(
-      document.createTextNode("Current status: "),
-      createStatusBadge(previousStatus)
-    );
-
-    showInboxMessage(
-      "Unable to save status: " + error.message,
-      true
+      createStatusBadge(value)
     );
   }
-});
+
+  updateStatusDisplay(submission.status);
+
+  status.append(statusSelect, statusDisplay);
+
+  // Assemble spreadsheet row
+  card.append(
+    type,
+    assignment,
+    student,
+    classInfo,
+    submitted,
+    details,
+    status
+  );
+
+  statusSelect.addEventListener("change", async () => {
+    const previousStatus = submission.status;
+    const newStatus = statusSelect.value;
+
+    if (newStatus === previousStatus) return;
+
+    statusSelect.disabled = true;
+    statusDisplay.textContent = "Saving...";
+
+    try {
+      await updateDoc(
+        doc(db, "submissions", submission.id),
+        { status: newStatus }
+      );
+
+      submission.status = newStatus;
+
+      showInboxMessage("Submission status saved.");
+      renderTeacherSubmissions();
+
+    } catch (error) {
+      console.error("Unable to update submission:", error);
+
+      statusSelect.value = previousStatus;
+      statusSelect.disabled = false;
+      updateStatusDisplay(previousStatus);
+
+      showInboxMessage(
+        "Unable to save status: " + error.message,
+        true
+      );
+    }
+  });
 
   $("submissionInbox").appendChild(card);
 }
+
 
 
 // FILTERS AND REFRESH
