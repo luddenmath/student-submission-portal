@@ -2171,6 +2171,32 @@ statusSelect.addEventListener("change", async () => {
 
 // FILTERS AND REFRESH
 
+[
+  "refreshSubmissions",
+  "submissionTypeFilter",
+  "submissionStatusFilter",
+  "submissionClassFilter",
+  "submissionDateFrom",
+  "submissionDateTo",
+  "submissionSort"
+].forEach(id => {
+  const element = $(id);
+
+  console.log(
+    `Element check: ${id}`,
+    element ? "FOUND" : "MISSING"
+  );
+
+  if (element) {
+    element.addEventListener("change", renderTeacherSubmissions);
+  }
+});
+
+$("refreshSubmissions")?.addEventListener(
+  "click",
+  loadTeacherSubmissions
+);
+/*
 $("refreshSubmissions").addEventListener(
   "click",
   loadTeacherSubmissions
@@ -2202,6 +2228,7 @@ $("submissionSort").addEventListener(
   "change",
   renderTeacherSubmissions
 );
+*/
 
 $("openClassManagement").addEventListener("click", () => {
   $("teacherMainView").classList.add("hidden");
