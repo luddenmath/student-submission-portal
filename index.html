@@ -51,6 +51,13 @@
   </button>
 </div>
 
+    <div class="panel">
+  <h2>Portal Settings</h2>
+  <p>Customize email notifications, class colors, status colors, and inbox display.</p>
+  <button type="button" id="openTeacherSettings">
+    Settings
+  </button>
+</div>
             <!-- TEACHER SUBMISSION INBOX -->
       <div class="panel">
         <div class="inbox-heading">
@@ -178,7 +185,76 @@
     Back to Teacher Dashboard
   </button>
 </section>
-    
+
+   <section id="teacherSettingsView" class="hidden">
+
+  <div class="panel">
+    <h2>Settings</h2>
+    <p>Manage your notification and display preferences.</p>
+
+    <h3>Email Notifications</h3>
+
+    <label>
+      Teacher submission summaries
+      <select id="teacherSubmissionMode">
+        <option value="never">Never</option>
+        <option value="daily">Daily summary</option>
+      </select>
+    </label>
+
+    <label id="dailySummaryTimeContainer" class="hidden">
+      Daily summary time
+      <input type="time" id="dailySummaryTime" value="16:00">
+    </label>
+
+    <label class="settings-checkbox">
+      <input type="checkbox" id="studentReceiptEnabled">
+      Send students an email receipt when they submit work
+    </label>
+
+    <label class="settings-checkbox">
+      <input type="checkbox" id="studentStatusEmailEnabled">
+      Email students when I change their submission status
+    </label>
+  </div>
+
+  <div class="panel">
+    <h3>Class Colors</h3>
+    <p>Choose a color to identify each class in your submission inbox.</p>
+    <div id="classColorSettings"></div>
+  </div>
+
+  <div class="panel">
+    <h3>Status Colors</h3>
+    <p>Customize the colors used for submission status labels.</p>
+    <div id="statusColorSettings"></div>
+  </div>
+
+  <div class="panel">
+    <h3>Submission Inbox Layout</h3>
+
+    <label>
+      Display style
+      <select id="inboxLayout">
+        <option value="expanded">Expanded — detailed submission cards</option>
+        <option value="compact">Compact — spreadsheet-style rows</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="panel">
+    <div id="teacherSettingsMessage"></div>
+
+    <button type="button" id="saveTeacherSettings">
+      Save Settings
+    </button>
+
+    <button type="button" class="secondary" id="backFromTeacherSettings">
+      Back to Teacher Dashboard
+    </button>
+  </div>
+
+</section> 
     </section>
 
     <!-- STUDENT DASHBOARD -->
