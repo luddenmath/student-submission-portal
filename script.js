@@ -2170,7 +2170,7 @@ statusSelect.addEventListener("change", async () => {
 
 
 // FILTERS AND REFRESH
-
+/* Diagnostic
 [
   "refreshSubmissions",
   "submissionTypeFilter",
@@ -2196,7 +2196,8 @@ $("refreshSubmissions")?.addEventListener(
   "click",
   loadTeacherSubmissions
 );
-/*
+*/
+
 $("refreshSubmissions").addEventListener(
   "click",
   loadTeacherSubmissions
@@ -2212,7 +2213,8 @@ $("submissionStatusFilter").addEventListener(
   renderTeacherSubmissions
 );
 
-//  $("submissionClassFilter").addEventListener("change",renderTeacherSubmissions); where did this come from/go???
+//  where did this come from/go???
+$("submissionClassFilter").addEventListener("change",renderTeacherSubmissions); 
 
 $("submissionDateFrom").addEventListener(
   "change",
@@ -2228,7 +2230,7 @@ $("submissionSort").addEventListener(
   "change",
   renderTeacherSubmissions
 );
-*/
+
 
 $("openClassManagement").addEventListener("click", () => {
   $("teacherMainView").classList.add("hidden");
