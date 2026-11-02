@@ -510,11 +510,17 @@ function populateTeacherSettings() {
   $("dailySummaryTime").value =
     teacherSettings.email.dailySummaryTime || "16:00";
 
-  $("studentReceiptEnabled").checked =
-    teacherSettings.email.studentReceiptEnabled !== false;
+  setSettingsToggle(
+    "studentReceiptEnabled",
+    teacherSettings.email.studentReceiptEnabled !== false,
+    "Student submission receipts"
+  );
 
-  $("studentStatusEmailEnabled").checked =
-    teacherSettings.email.studentStatusEmailEnabled !== false;
+  setSettingsToggle(
+    "studentStatusEmailEnabled",
+    teacherSettings.email.studentStatusEmailEnabled !== false,
+    "Student status-change emails"
+  );
 
   $("inboxLayout").value =
     teacherSettings.display.inboxLayout || "expanded";
@@ -522,6 +528,12 @@ function populateTeacherSettings() {
   updateDailySummaryTimeVisibility();
   renderClassColorSettings();
   renderStatusColorSettings();
+}
+
+function setSettingsToggle(id, enabled, label) {
+  const button = $(id);
+  button.setAttribute("aria-pressed", String(enabled));
+  button.textContent = `${label}: ${enabled ? "On" : "Off"}`;
 }
 
 function updateDailySummaryTimeVisibility() {
@@ -599,44 +611,93 @@ function renderStatusColorSettings() {
   });
 }
 
+
+
+function applyTeacherDisplaySettings() {
+  // Apply status colors to badges.
+  document.querySelectorAll(".status-badge").forEach(badge => {
+    const status = [...badge.classList]
+      .find(name => name.startsWith("status-") && name !== "status-badge")
+      ?.replace("status-", "");
+
+    const color = teacherSettings.display.statusColors[status];
+
+    if (color) {
+      badge.style.color = color;
+      badge.style.backgroundColor = color + "26";
+      badge.style.borderColor = color + "80";
+    }
+  });
+
+  // Apply class colors to teacher submission cards.
+  document.querySelectorAll("#submissionInbox .submission-card")
+    .forEach(card => {
+      const submissionId = card.dataset.submissionId;
+
+      const submission = teacherSubmissions.find(
+        item => item.id === submissionId
+      );
+
+      if (!submission) return;
+
+      const color =
+        teacherSettings.display.classColors[submission.classId];
+
+      card.style.borderLeft =
+        color ? `5px solid ${color}` : "";
+    });
+
+  // Apply compact or expanded layout.
+  $("submissionInbox").classList.toggle(
+    "compact-layout",
+    teacherSettings.display.inboxLayout === "compact"
+  );
+}
+
+let settingsSaveTimer = null;
+
 async function saveTeacherSettings() {
   if (!currentUser) return;
 
-  const button = $("saveTeacherSettings");
-  button.disabled = true;
-  button.textContent = "Saving...";
+  const classColors = {};
+
+  document.querySelectorAll(
+    "#classColorSettings input[data-class-id]"
+  ).forEach(input => {
+    classColors[input.dataset.classId] = input.value;
+  });
+
+  const statusColors = {};
+
+  document.querySelectorAll(
+    "#statusColorSettings input[data-status]"
+  ).forEach(input => {
+    statusColors[input.dataset.status] = input.value;
+  });
+
+  const email = {
+    teacherSubmissionMode: $("teacherSubmissionMode").value,
+    dailySummaryTime: $("dailySummaryTime").value || "16:00",
+    studentReceiptEnabled:
+      $("studentReceiptEnabled").getAttribute("aria-pressed") === "true",
+    studentStatusEmailEnabled:
+      $("studentStatusEmailEnabled").getAttribute("aria-pressed") === "true"
+  };
+
+  const display = {
+    classColors,
+    statusColors,
+    inboxLayout: $("inboxLayout").value
+  };
+
+  teacherSettings = { email, display };
+
+  // Apply the display changes immediately.
+  applyTeacherDisplaySettings();
+
+  showTeacherSettingsMessage("Saving settings...");
 
   try {
-    const classColors = {};
-
-    document.querySelectorAll(
-      "#classColorSettings input[data-class-id]"
-    ).forEach(input => {
-      classColors[input.dataset.classId] = input.value;
-    });
-
-    const statusColors = {};
-
-    document.querySelectorAll(
-      "#statusColorSettings input[data-status]"
-    ).forEach(input => {
-      statusColors[input.dataset.status] = input.value;
-    });
-
-    const email = {
-      teacherSubmissionMode: $("teacherSubmissionMode").value,
-      dailySummaryTime: $("dailySummaryTime").value || "16:00",
-      studentReceiptEnabled: $("studentReceiptEnabled").checked,
-      studentStatusEmailEnabled:
-        $("studentStatusEmailEnabled").checked
-    };
-
-    const display = {
-      classColors,
-      statusColors,
-      inboxLayout: $("inboxLayout").value
-    };
-
     await setDoc(
       doc(db, "teacherSettings", currentUser.uid),
       {
@@ -647,9 +708,7 @@ async function saveTeacherSettings() {
       { merge: true }
     );
 
-    teacherSettings = { email, display };
-
-    showTeacherSettingsMessage("Settings saved successfully.");
+    showTeacherSettingsMessage("Settings saved.");
 
   } catch (error) {
     console.error("Unable to save teacher settings:", error);
@@ -658,22 +717,72 @@ async function saveTeacherSettings() {
       "Unable to save settings: " + error.message,
       true
     );
-
-  } finally {
-    button.disabled = false;
-    button.textContent = "Save Settings";
   }
+}
+
+function queueTeacherSettingsSave() {
+  clearTimeout(settingsSaveTimer);
+
+  settingsSaveTimer = setTimeout(() => {
+    saveTeacherSettings();
+  }, 400);
 }
 
 $("teacherSubmissionMode").addEventListener(
   "change",
-  updateDailySummaryTimeVisibility
+  () => {
+    updateDailySummaryTimeVisibility();
+    queueTeacherSettingsSave();
+  }
 );
 
-$("saveTeacherSettings").addEventListener(
-  "click",
-  saveTeacherSettings
+$("dailySummaryTime").addEventListener(
+  "change",
+  queueTeacherSettingsSave
 );
+
+$("inboxLayout").addEventListener(
+  "change",
+  queueTeacherSettingsSave
+);
+
+$("studentReceiptEnabled").addEventListener("click", () => {
+  const button = $("studentReceiptEnabled");
+  const enabled = button.getAttribute("aria-pressed") !== "true";
+
+  setSettingsToggle(
+    "studentReceiptEnabled",
+    enabled,
+    "Student submission receipts"
+  );
+
+  queueTeacherSettingsSave();
+});
+
+$("studentStatusEmailEnabled").addEventListener("click", () => {
+  const button = $("studentStatusEmailEnabled");
+  const enabled = button.getAttribute("aria-pressed") !== "true";
+
+  setSettingsToggle(
+    "studentStatusEmailEnabled",
+    enabled,
+    "Student status-change emails"
+  );
+
+  queueTeacherSettingsSave();
+});
+
+$("classColorSettings").addEventListener("change", event => {
+  if (event.target.matches("input[data-class-id]")) {
+    queueTeacherSettingsSave();
+  }
+});
+
+$("statusColorSettings").addEventListener("change", event => {
+  if (event.target.matches("input[data-status]")) {
+    queueTeacherSettingsSave();
+  }
+});
 
 $("openTeacherSettings").addEventListener("click", async () => {
   $("teacherMainView").classList.add("hidden");
@@ -1841,11 +1950,13 @@ function renderTeacherSubmissions() {
   for (const submission of filtered) {
     renderSubmissionCard(submission);
   }
+  applyTeacherDisplaySettings();
 }
 
 function renderSubmissionCard(submission) {
-  const card = document.createElement("div");
-  card.className = "submission-card";
+const card = document.createElement("div");
+card.className = "submission-card";
+card.dataset.submissionId = submission.id;
 
   const type = document.createElement("span");
   type.className = "submission-type";
@@ -2005,6 +2116,7 @@ statusSelect.addEventListener("change", async () => {
 });
 
   $("submissionInbox").appendChild(card);
+  applyTeacherDisplaySettings();
 }
 
 
