@@ -2186,10 +2186,7 @@ $("submissionStatusFilter").addEventListener(
   renderTeacherSubmissions
 );
 
-  $("submissionClassFilter").addEventListener(
-  "change",
-  renderTeacherSubmissions
-);
+//  $("submissionClassFilter").addEventListener("change",renderTeacherSubmissions); where did this come from/go???
 
 $("submissionDateFrom").addEventListener(
   "change",
