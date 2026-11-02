@@ -612,31 +612,41 @@ header {
   cursor: pointer;
 }
 
+
 /* Spreadsheet-style teacher inbox */
 
 #submissionInbox.compact-layout {
   display: flex;
   flex-direction: column;
   gap: 0;
+  width: 100%;
+  overflow-x: auto;
   border: 1px solid var(--border);
   border-radius: 8px;
-  overflow-x: auto;
   background: #111a2c;
 }
 
+/* Each submission is one spreadsheet row */
 #submissionInbox.compact-layout .submission-card {
   display: grid;
-  grid-template-columns: minmax(150px, 1.5fr) minmax(110px, 1fr) minmax(100px, 1fr) minmax(110px, 1fr);
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
+  grid-template-columns:
+    90px
+    minmax(150px, 1.3fr)
+    minmax(160px, 1.2fr)
+    minmax(130px, 1fr)
+    minmax(135px, 1fr)
+    minmax(180px, 1.3fr)
+    minmax(135px, 1fr);
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
   margin: 0;
+  min-width: 1050px;
   border: 0;
   border-bottom: 1px solid var(--border);
   border-radius: 0;
   box-shadow: none;
   background: transparent;
-  min-width: 600px;
 }
 
 #submissionInbox.compact-layout .submission-card:last-child {
@@ -647,41 +657,100 @@ header {
   background: #1c2941;
 }
 
-#submissionInbox.compact-layout .submission-card h3 {
-  font-size: 0.85rem;
-  font-weight: 600;
-  margin: 0;
+/* Individual cells */
+#submissionInbox.compact-layout .submission-cell {
+  min-width: 0;
+  padding: 10px 12px;
+  border-right: 1px solid var(--border);
+  font-size: 0.8rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
-#submissionInbox.compact-layout .submission-card p {
-  font-size: 0.78rem;
-  line-height: 1.3;
-  margin: 2px 0;
+#submissionInbox.compact-layout .submission-cell:last-child {
+  border-right: 0;
 }
 
-#submissionInbox.compact-layout .submission-card button,
-#submissionInbox.compact-layout .submission-card select {
-  padding: 6px 8px;
-  font-size: 0.78rem;
-  margin: 0;
+/* Small labels above cell content */
+#submissionInbox.compact-layout .submission-cell::before {
+  content: attr(data-label);
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted, #9caac0);
+  font-size: 0.67rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
-#submissionInbox.compact-layout .submission-card .status-badge {
+/* Student name and email */
+#submissionInbox.compact-layout .cell-student strong,
+#submissionInbox.compact-layout .cell-student small {
+  display: block;
+}
+
+#submissionInbox.compact-layout .cell-student strong {
+  font-size: 0.8rem;
+}
+
+#submissionInbox.compact-layout .cell-student small {
+  margin-top: 3px;
+  color: var(--muted, #9caac0);
   font-size: 0.7rem;
-  padding: 3px 7px;
-  margin: 2px 0;
 }
 
-#submissionInbox.compact-layout .submission-meta {
+/* Submission type */
+#submissionInbox.compact-layout .cell-type {
   font-size: 0.7rem;
-  margin: 0;
+  font-weight: 700;
 }
 
-#submissionInbox.compact-layout .submission-type {
-  font-size: 0.68rem;
+/* Details */
+#submissionInbox.compact-layout .submission-notes {
+  margin-top: 5px;
+  color: var(--muted, #9caac0);
+  white-space: pre-wrap;
+}
+
+#submissionInbox.compact-layout .submission-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+#submissionInbox.compact-layout .submission-links a {
+  display: inline-block;
   padding: 3px 6px;
-  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.72rem;
 }
+
+/* Status controls */
+#submissionInbox.compact-layout .cell-status select {
+  width: 100%;
+  min-width: 0;
+  padding: 6px;
+  font-size: 0.76rem;
+}
+
+#submissionInbox.compact-layout .submission-status-display {
+  margin-top: 6px;
+}
+
+#submissionInbox.compact-layout .status-badge {
+  font-size: 0.68rem;
+  padding: 3px 7px;
+}
+
+/* Narrow screens */
+@media (max-width: 700px) {
+  #submissionInbox.compact-layout {
+    border-radius: 6px;
+  }
+}
+
 
 .time-picker-row {
   position: relative;
