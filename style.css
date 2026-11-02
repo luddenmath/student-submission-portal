@@ -630,23 +630,27 @@ header {
 #submissionInbox.compact-layout .submission-card {
   display: grid;
   grid-template-columns:
-    90px
-    minmax(150px, 1.3fr)
-    minmax(160px, 1.2fr)
-    minmax(130px, 1fr)
-    minmax(135px, 1fr)
-    minmax(180px, 1.3fr)
-    minmax(135px, 1fr);
+  0.7fr
+  1.3fr
+  1.2fr
+  1fr
+  1fr
+  1.3fr
+  1fr;
   align-items: stretch;
   gap: 0;
   padding: 0;
   margin: 0;
-  min-width: 1050px;
+  min-width: 0;
   border: 0;
   border-bottom: 1px solid var(--border);
   border-radius: 0;
   box-shadow: none;
   background: transparent;
+}
+#submissionInbox.compact-layout .submission-card {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 #submissionInbox.compact-layout .submission-card:last-child {
