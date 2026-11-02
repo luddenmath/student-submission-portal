@@ -528,6 +528,7 @@ function populateTeacherSettings() {
   updateDailySummaryTimeVisibility();
   renderClassColorSettings();
   renderStatusColorSettings();
+  updateDailySummaryTimeDisplay();
 }
 
 function setSettingsToggle(id, enabled, label) {
@@ -541,6 +542,27 @@ function updateDailySummaryTimeVisibility() {
     "hidden",
     $("teacherSubmissionMode").value !== "daily"
   );
+}
+
+function updateDailySummaryTimeDisplay() {
+  const value = $("dailySummaryTime").value || "16:00";
+  const [hours, minutes] = value.split(":").map(Number);
+  const date = new Date();
+  date.setHours(hours, minutes, 0, 0);
+
+  $("dailySummaryTimeDisplay").textContent =
+    date.toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit"
+    });
+}
+
+function updateColorRowPreview(input) {
+  const row = input.closest(".settings-color-row");
+  if (!row) return;
+
+  row.style.borderLeft = `8px solid ${input.value}`;
+  row.style.backgroundColor = `${input.value}22`;
 }
 
 function renderClassColorSettings() {
@@ -576,6 +598,7 @@ function renderClassColorSettings() {
       teacherSettings.display.classColors[classData.id] || "#293650";
 
     row.append(label, color);
+    updateColorRowPreview(color);
     container.appendChild(row);
   });
 }
@@ -598,7 +621,7 @@ function renderStatusColorSettings() {
     const label = document.createElement("label");
     label.textContent = labelText;
 
-    const color = document.createElement("input");
+        const color = document.createElement("input");
     color.type = "color";
     color.className = "settings-color-input";
     color.dataset.status = status;
@@ -607,6 +630,7 @@ function renderStatusColorSettings() {
       DEFAULT_STATUS_COLORS[status];
 
     row.append(label, color);
+    updateColorRowPreview(color);
     container.appendChild(row);
   });
 }
@@ -736,10 +760,14 @@ $("teacherSubmissionMode").addEventListener(
   }
 );
 
-$("dailySummaryTime").addEventListener(
-  "change",
-  queueTeacherSettingsSave
-);
+$("dailySummaryTime").addEventListener("input", () => {
+  updateDailySummaryTimeDisplay();
+});
+
+$("dailySummaryTime").addEventListener("change", () => {
+  updateDailySummaryTimeDisplay();
+  queueTeacherSettingsSave();
+});
 
 $("inboxLayout").addEventListener(
   "change",
@@ -781,6 +809,18 @@ $("classColorSettings").addEventListener("change", event => {
 $("statusColorSettings").addEventListener("change", event => {
   if (event.target.matches("input[data-status]")) {
     queueTeacherSettingsSave();
+  }
+});
+
+$("classColorSettings").addEventListener("input", event => {
+  if (event.target.matches("input[data-class-id]")) {
+    updateColorRowPreview(event.target);
+  }
+});
+
+$("statusColorSettings").addEventListener("input", event => {
+  if (event.target.matches("input[data-status]")) {
+    updateColorRowPreview(event.target);
   }
 });
 
@@ -1232,6 +1272,7 @@ function renderStudentHistory() {
 
     container.appendChild(card);
   }
+  applyTeacherDisplaySettings();
 }
 
 async function loadStudentHistory() {
@@ -2116,7 +2157,6 @@ statusSelect.addEventListener("change", async () => {
 });
 
   $("submissionInbox").appendChild(card);
-  applyTeacherDisplaySettings();
 }
 
 
@@ -2225,7 +2265,9 @@ onAuthStateChanged(auth, async user => {
 
 if (profile.role === "teacher") {
   await loadClasses();
-    await loadTeacherSubmissions();
+  await loadClassesForTeacherSettings();
+  await loadTeacherSettings();
+  await loadTeacherSubmissions();
 }
 
 if (profile.role === "student") {
