@@ -43,12 +43,18 @@
 
   <div id="teacherMainView">
     
-    <div class="panel">
-  <h2>Class Management</h2>
-  <p>Create, edit, activate, and deactivate your classes.</p>
-  <button type="button" id="openClassManagement">
-    Manage Classes
-  </button>
+<div class="panel">
+  <div class="inbox-heading">
+    <div>
+      <h2>Manage Classes</h2>
+      <p>Create and edit your classes and periods.</p>
+    </div>
+
+    <button type="button" class="secondary" id="backToTeacherDashboard">
+      Back
+    </button>
+  </div>
+  
 </div>
 
     <div class="panel">
@@ -129,20 +135,6 @@
         </div>
       </div>
 
-      <div class="dashboard-grid">
-        <div class="dashboard-card">
-          <h3>Submissions</h3>
-          <p>Review student assignment submissions.</p>
-          <small>Coming next</small>
-        </div>
-
-        <div class="dashboard-card">
-          <h3>Assignments</h3>
-          <p>Manage assignment references.</p>
-          <small>Coming later</small>
-        </div>
-      </div>
-
     </section>
 <section id="classManagementView" class="hidden">
   <div class="panel">
@@ -189,8 +181,20 @@
    <section id="teacherSettingsView" class="hidden">
 
   <div class="panel">
+<div class="inbox-heading">
+  <div>
     <h2>Settings</h2>
     <p>Manage your notification and display preferences.</p>
+  </div>
+
+  <button
+    type="button"
+    class="secondary"
+    id="backFromTeacherSettings"
+  >
+    Back
+  </button>
+</div>
 
     <h3>Email Notifications</h3>
 
@@ -202,8 +206,9 @@
       </select>
     </label>
 
-<label id="dailySummaryTimeContainer" class="settings-control">
+<label id="dailySummaryTimeContainer" class="settings-control time-picker-row">
   <span>Daily summary time</span>
+  <span id="dailySummaryTimeDisplay">4:00 PM</span>
   <input type="time" id="dailySummaryTime" value="16:00">
 </label>
 
@@ -253,13 +258,7 @@
 <div class="panel">
   <div id="teacherSettingsMessage"></div>
 
-  <button
-    type="button"
-    class="secondary"
-    id="backFromTeacherSettings"
-  >
-    Back to Teacher Dashboard
-  </button>
+
 </div>
 
 </section> 
