@@ -49,6 +49,31 @@ const $ = id => document.getElementById(id);
 let currentUser = null;
   let activeClasses = [];
 let selectedClass = null;
+let teacherSettings = {
+  email: {
+    teacherSubmissionMode: "never",
+    dailySummaryTime: "16:00",
+    studentReceiptEnabled: true,
+    studentStatusEmailEnabled: true
+  },
+  display: {
+    classColors: {},
+    statusColors: {
+      new: "#3b82f6",
+      reviewed: "#8b5cf6",
+      resolved: "#10b981",
+      needs_correction: "#f97316"
+    },
+    inboxLayout: "expanded"
+  }
+};
+
+const DEFAULT_STATUS_COLORS = {
+  new: "#3b82f6",
+  reviewed: "#8b5cf6",
+  resolved: "#10b981",
+  needs_correction: "#f97316"
+};
 
   /*  was for local storage of classes, now saving as variable in firebase
   function getRecentClassIds() {
@@ -121,7 +146,8 @@ function hideDashboards() {
   $("teacherDashboard").classList.add("hidden");
   $("teacherMainView").classList.remove("hidden");
   $("classManagementView").classList.add("hidden");
-
+  $("teacherSettingsView").classList.add("hidden");
+  
   $("studentDashboard").classList.add("hidden");
   $("adminDashboard").classList.add("hidden");
 }
@@ -412,6 +438,281 @@ function showClassMessage(message, isError = false) {
   container.appendChild(text);
 }
 
+
+// ------------------------------
+// TEACHER SETTINGS
+// ------------------------------
+
+function showTeacherSettingsMessage(message, isError = false) {
+  const container = $("teacherSettingsMessage");
+  container.replaceChildren();
+
+  const element = document.createElement("p");
+  element.className = isError ? "submission-error" : "submission-success";
+  element.textContent = message;
+
+  container.appendChild(element);
+}
+
+async function loadTeacherSettings() {
+  if (!currentUser) return;
+
+  showTeacherSettingsMessage("Loading settings...");
+
+  try {
+    const settingsRef = doc(
+      db,
+      "teacherSettings",
+      currentUser.uid
+    );
+
+    const snapshot = await getDoc(settingsRef);
+
+    if (snapshot.exists()) {
+      const saved = snapshot.data();
+
+      teacherSettings = {
+        email: {
+          ...teacherSettings.email,
+          ...(saved.email || {})
+        },
+        display: {
+          ...teacherSettings.display,
+          ...(saved.display || {}),
+          classColors: {
+            ...teacherSettings.display.classColors,
+            ...(saved.display?.classColors || {})
+          },
+          statusColors: {
+            ...DEFAULT_STATUS_COLORS,
+            ...(saved.display?.statusColors || {})
+          }
+        }
+      };
+    }
+
+    populateTeacherSettings();
+    showTeacherSettingsMessage("");
+
+  } catch (error) {
+    console.error("Unable to load teacher settings:", error);
+    showTeacherSettingsMessage(
+      "Unable to load settings: " + error.message,
+      true
+    );
+  }
+}
+
+function populateTeacherSettings() {
+  $("teacherSubmissionMode").value =
+    teacherSettings.email.teacherSubmissionMode;
+
+  $("dailySummaryTime").value =
+    teacherSettings.email.dailySummaryTime || "16:00";
+
+  $("studentReceiptEnabled").checked =
+    teacherSettings.email.studentReceiptEnabled !== false;
+
+  $("studentStatusEmailEnabled").checked =
+    teacherSettings.email.studentStatusEmailEnabled !== false;
+
+  $("inboxLayout").value =
+    teacherSettings.display.inboxLayout || "expanded";
+
+  updateDailySummaryTimeVisibility();
+  renderClassColorSettings();
+  renderStatusColorSettings();
+}
+
+function updateDailySummaryTimeVisibility() {
+  $("dailySummaryTimeContainer").classList.toggle(
+    "hidden",
+    $("teacherSubmissionMode").value !== "daily"
+  );
+}
+
+function renderClassColorSettings() {
+  const container = $("classColorSettings");
+  container.replaceChildren();
+
+  const classes = [...activeClasses]
+    .sort((a, b) =>
+      (a.name || "").localeCompare(b.name || "")
+    );
+
+  if (classes.length === 0) {
+    const message = document.createElement("p");
+    message.className = "empty-message";
+    message.textContent = "You haven't created any classes yet.";
+    container.appendChild(message);
+    return;
+  }
+
+  classes.forEach(classData => {
+    const row = document.createElement("div");
+    row.className = "settings-color-row";
+
+    const label = document.createElement("label");
+    label.textContent =
+      `${classData.name} — Period ${classData.period}`;
+
+    const color = document.createElement("input");
+    color.type = "color";
+    color.className = "settings-color-input";
+    color.dataset.classId = classData.id;
+    color.value =
+      teacherSettings.display.classColors[classData.id] || "#293650";
+
+    row.append(label, color);
+    container.appendChild(row);
+  });
+}
+
+function renderStatusColorSettings() {
+  const container = $("statusColorSettings");
+  container.replaceChildren();
+
+  const labels = {
+    new: "New",
+    reviewed: "Reviewed",
+    resolved: "Resolved",
+    needs_correction: "Needs correction"
+  };
+
+  Object.entries(labels).forEach(([status, labelText]) => {
+    const row = document.createElement("div");
+    row.className = "settings-color-row";
+
+    const label = document.createElement("label");
+    label.textContent = labelText;
+
+    const color = document.createElement("input");
+    color.type = "color";
+    color.className = "settings-color-input";
+    color.dataset.status = status;
+    color.value =
+      teacherSettings.display.statusColors[status] ||
+      DEFAULT_STATUS_COLORS[status];
+
+    row.append(label, color);
+    container.appendChild(row);
+  });
+}
+
+async function saveTeacherSettings() {
+  if (!currentUser) return;
+
+  const button = $("saveTeacherSettings");
+  button.disabled = true;
+  button.textContent = "Saving...";
+
+  try {
+    const classColors = {};
+
+    document.querySelectorAll(
+      "#classColorSettings input[data-class-id]"
+    ).forEach(input => {
+      classColors[input.dataset.classId] = input.value;
+    });
+
+    const statusColors = {};
+
+    document.querySelectorAll(
+      "#statusColorSettings input[data-status]"
+    ).forEach(input => {
+      statusColors[input.dataset.status] = input.value;
+    });
+
+    const email = {
+      teacherSubmissionMode: $("teacherSubmissionMode").value,
+      dailySummaryTime: $("dailySummaryTime").value || "16:00",
+      studentReceiptEnabled: $("studentReceiptEnabled").checked,
+      studentStatusEmailEnabled:
+        $("studentStatusEmailEnabled").checked
+    };
+
+    const display = {
+      classColors,
+      statusColors,
+      inboxLayout: $("inboxLayout").value
+    };
+
+    await setDoc(
+      doc(db, "teacherSettings", currentUser.uid),
+      {
+        email,
+        display,
+        updatedAt: serverTimestamp()
+      },
+      { merge: true }
+    );
+
+    teacherSettings = { email, display };
+
+    showTeacherSettingsMessage("Settings saved successfully.");
+
+  } catch (error) {
+    console.error("Unable to save teacher settings:", error);
+
+    showTeacherSettingsMessage(
+      "Unable to save settings: " + error.message,
+      true
+    );
+
+  } finally {
+    button.disabled = false;
+    button.textContent = "Save Settings";
+  }
+}
+
+$("teacherSubmissionMode").addEventListener(
+  "change",
+  updateDailySummaryTimeVisibility
+);
+
+$("saveTeacherSettings").addEventListener(
+  "click",
+  saveTeacherSettings
+);
+
+$("openTeacherSettings").addEventListener("click", async () => {
+  $("teacherMainView").classList.add("hidden");
+  $("classManagementView").classList.add("hidden");
+  $("teacherSettingsView").classList.remove("hidden");
+
+  await loadClassesForTeacherSettings();
+  await loadTeacherSettings();
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+
+async function loadClassesForTeacherSettings() {
+  if (!currentUser) return;
+
+  try {
+    const classesQuery = query(
+      collection(db, "classes"),
+      where("teacherId", "==", currentUser.uid)
+    );
+
+    const snapshot = await getDocs(classesQuery);
+
+    activeClasses = snapshot.docs.map(item => ({
+      id: item.id,
+      ...item.data()
+    }));
+
+  } catch (error) {
+    console.error("Unable to load classes for settings:", error);
+  }
+}
+
+$("backFromTeacherSettings").addEventListener("click", () => {
+  $("teacherSettingsView").classList.add("hidden");
+  $("teacherMainView").classList.remove("hidden");
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
 // ------------------------------
 // CREATE CLASS
 // ------------------------------
@@ -1179,6 +1480,12 @@ async function shareDriveFileWithTeacher(fileId, accessToken) {
   }
 }
 
+function resetDrivePickerButton() {
+  const button = $("chooseDriveFiles");
+  button.disabled = false;
+  button.textContent = "Choose from Google Drive";
+}
+
 function createGooglePicker(accessToken) {
   const picker = new window.google.picker.PickerBuilder()
     .addView(window.google.picker.ViewId.DOCS)
@@ -1187,7 +1494,24 @@ function createGooglePicker(accessToken) {
     .setOAuthToken(accessToken)
     .setDeveloperKey(GOOGLE_PICKER_API_KEY)
     .setAppId(GOOGLE_PICKER_PROJECT_NUMBER)
-    .setCallback(data => handleGooglePickerResult(data, accessToken))
+    .setCallback(data => {
+      const action = data[window.google.picker.Response.ACTION];
+
+      if (action === window.google.picker.Action.PICKED) {
+        handleGooglePickerResult(data, accessToken)
+          .catch(error => {
+            console.error("Drive selection error:", error);
+            showSubmissionMessage(
+              "Unable to process selected files: " + error.message,
+              true
+            );
+          })
+          .finally(resetDrivePickerButton);
+
+      } else {
+        resetDrivePickerButton();
+      }
+    })
     .build();
 
   picker.setVisible(true);
@@ -1263,19 +1587,22 @@ async function handleGooglePickerResult(data, accessToken) {
     }
   }
 
-  if (failed.length > 0) {
-    showSubmissionMessage(
-      `${added} file(s) added. ${failed.length} file(s) could not be shared. ` +
-      failed.join(" "),
-      true
-    );
-  } else {
-    showSubmissionMessage(
-  added > 0
-    ? `${added} ${added === 1 ? "file" : "files"} added and shared with your teacher.`
-    : "No new files were added."
-);
-  }
+if (failed.length > 0) {
+  const addedLabel = added === 1 ? "file" : "files";
+  const failedLabel = failed.length === 1 ? "file" : "files";
+
+  showSubmissionMessage(
+    `${added} ${addedLabel} added. ${failed.length} ${failedLabel} could not be shared. ` +
+    failed.join(" "),
+    true
+  );
+} else {
+  showSubmissionMessage(
+    added > 0
+      ? `${added} ${added === 1 ? "file" : "files"} added and shared with your teacher.`
+      : "No new files were added."
+  );
+}
 }
 
 $("chooseDriveFiles").addEventListener("click", async () => {
@@ -1307,9 +1634,7 @@ $("chooseDriveFiles").addEventListener("click", async () => {
       true
     );
 
-  } finally {
-    button.disabled = false;
-    button.textContent = "Choose from Google Drive";
+    resetDrivePickerButton();
   }
 });
 
