@@ -126,13 +126,22 @@ function rememberRecentTeacher(email) {
 
 $("signIn").addEventListener("click", async () => {
   $("accessError").hidden = true;
-  $("status").textContent = "Signing in...";
+  $("status").textContent = "Opening Google sign-in...";
+
+  console.log("Starting Google sign-in...");
 
   try {
-    await signInWithPopup(auth, provider);
-  } catch (error) {
+    const result = await signInWithPopup(auth, provider);
+
+    console.log("Google sign-in succeeded:", result.user);
     $("status").textContent =
-      error.code + ": " + error.message;
+      "Google sign-in succeeded. Loading your account...";
+
+  } catch (error) {
+    console.error("Google sign-in failed:", error);
+
+    $("status").textContent =
+      "Sign-in error: " + error.code + "\n" + error.message;
   }
 });
 
